@@ -1,9 +1,6 @@
 package org.zenith.database;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Properties;
 
 public class DbConnection {
@@ -32,12 +29,27 @@ public class DbConnection {
         return DbConnection.instance;
     }
 
-    public ResultSet queryDb() {
+    public PreparedStatement prepareQuery(String query) {
         try {
-            Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT * FROM test_table");
+            return connection.prepareStatement(query);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return null;
+        }
+    }
 
-            return resultSet;
+    public ResultSet queryDb(String query) {
+        try {
+            return connection.createStatement().executeQuery(query);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return null;
+        }
+    }
+
+    public ResultSet queryDb(PreparedStatement statement) {
+        try {
+            return statement.executeQuery();
         } catch (Exception ex) {
             ex.printStackTrace();
             return null;
