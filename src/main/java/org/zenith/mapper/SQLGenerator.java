@@ -167,4 +167,19 @@ public class SQLGenerator {
             return null;
         }
     }
+
+    public static String generateDelete(IModel model) {
+        try {
+            String tableName = model.getClass().getSimpleName().toLowerCase();
+            Field idField = model.getClass().getDeclaredField("id");
+            idField.setAccessible(true);
+
+            Object idValue = idField.get(model);
+
+            return String.format("DELETE FROM %s WHERE id=%s;", tableName, idValue);
+        } catch (Exception ex) {
+          ex.printStackTrace();
+          return null;
+        }
+    }
 }

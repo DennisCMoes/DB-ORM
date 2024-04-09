@@ -54,5 +54,8 @@ public class EntityManager {
         databaseUtil.queryDb(query);
     }
 
-    public void deleteEntity(IModel model) {}
+    public void deleteEntity(IModel model) {
+        String query = SQLGenerator.generateDelete(model);
+        databaseUtil.queryDb(query);
+    }
 }
