@@ -30,8 +30,8 @@ public class EntityManager {
         databaseUtil.queryDb(query);
     }
 
-    public <T extends IModel> List<T> findAll(String tableName, Class<T> classObj) {
-        String query = SQLGenerator.generateSelect(tableName);
+    public <T extends IModel> List<T> findAll(Class<T> classObj) {
+        String query = SQLGenerator.generateSelect(classObj.getSimpleName().toLowerCase());
         ResultSet resultSet = databaseUtil.queryDb(query);
         return EntityMapper.resultToList(resultSet, classObj);
     }

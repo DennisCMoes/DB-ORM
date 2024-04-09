@@ -3,6 +3,7 @@ package org.zenith.mapper;
 import org.zenith.annotation.relation.ManyToOne;
 import org.zenith.annotation.relation.OneToOne;
 import org.zenith.core.EntityManager;
+import org.zenith.model.UserTable;
 import org.zenith.model.interfaces.IModel;
 
 import java.lang.annotation.Annotation;
@@ -21,20 +22,8 @@ public class EntityMapper {
         List<T> objects = new ArrayList<>();
 
         try {
-            Field[] fields = classObj.getDeclaredFields();
-
-            while (resultSet.next()) {
-                T object = classObj.getDeclaredConstructor().newInstance();
-
-                for (Field field : fields) {
-                    field.setAccessible(true);
-
-                    Object value = resultSet.getObject(field.getName());
-                    field.set(object, value);
-                }
-
-                objects.add(object);
-            }
+            while (resultSet.next())
+                objects.add(resultToObject(resultSet, classObj, false));
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -43,11 +32,16 @@ public class EntityMapper {
     }
 
     public static <T extends IModel> T resultToObject(ResultSet resultSet, Class<T> classObj) {
+        return resultToObject(resultSet, classObj, true);
+    }
+
+    private static <T extends IModel> T resultToObject(ResultSet resultSet, Class<T> classObj, boolean hasOneRow) {
         try {
             Field[] fields = classObj.getDeclaredFields();
             T object = classObj.getDeclaredConstructor().newInstance();
 
-            resultSet.next();
+            if (hasOneRow)
+                resultSet.next();
 
             for (Field field : fields) {
                 field.setAccessible(true);
