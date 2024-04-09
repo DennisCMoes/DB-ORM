@@ -116,4 +116,55 @@ public class SQLGenerator {
             return null;
         }
     }
+
+    public static String generateUpdate(IModel model) {
+        ReflectionUtil reflectionUtil = new ReflectionUtil();
+
+        try {
+            StringBuilder stringBuilder = new StringBuilder();
+            String tableName = model.getClass().getSimpleName().toLowerCase();
+
+            stringBuilder.append(String.format("UPDATE %s SET ", tableName));
+
+            List<Field> fields = reflectionUtil.getFieldsOfModel(model.getClass())
+                    .stream()
+                    .filter(field -> !field.isAnnotationPresent(Id.class))
+                    .toList();
+
+            for (int i = 0; i < fields.size(); i++) {
+                Field field = fields.get(i);
+                field.setAccessible(true);
+
+                String fieldName = field.getName();
+                Object fieldValue = field.get(model);
+
+                // TODO: Make this work with multiple annotations
+                Annotation fieldAnnotation = field.getDeclaredAnnotations()[0];
+
+                if (fieldAnnotation instanceof Column) {
+                    if (((Column) fieldAnnotation).type().equals(ColumnType.INTEGER)) {
+                        stringBuilder.append(String.format("%s=%s", fieldName, fieldValue));
+                    } else {
+                        stringBuilder.append(String.format("%s='%s'", fieldName, fieldValue));
+                    }
+                }
+
+
+                if (i + 1 < fields.size()) {
+                    stringBuilder.append(", ");
+                }
+            }
+
+            Field idField = model.getClass().getDeclaredField("id");
+            idField.setAccessible(true);
+            Object idValue = idField.get(model);
+
+            stringBuilder.append(String.format(" WHERE id=%s;", idValue));
+
+            return stringBuilder.toString();
+        } catch (NoSuchFieldException | IllegalAccessException ex) {
+            ex.printStackTrace();
+            return null;
+        }
+    }
 }

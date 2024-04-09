@@ -46,7 +46,13 @@ public class EntityManager {
 
     public void saveEntity(IModel model) {
         String query = SQLGenerator.generateInsert(model);
-        System.out.println(query);
         databaseUtil.queryDb(query);
     }
+
+    public void updateEntity(IModel model) {
+        String query = SQLGenerator.generateUpdate(model);
+        databaseUtil.queryDb(query);
+    }
+
+    public void deleteEntity(IModel model) {}
 }
