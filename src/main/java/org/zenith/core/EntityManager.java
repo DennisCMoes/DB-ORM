@@ -17,7 +17,7 @@ import java.util.List;
  * It would provide methods for CRUD operations (e.g., save, find, update, delete) and transaction management.
  */
 public class EntityManager {
-private final DatabaseUtil databaseUtil;
+    private final DatabaseUtil databaseUtil;
 
     public EntityManager() {
         this.databaseUtil = DatabaseUtil.getInstance();
@@ -40,9 +40,13 @@ private final DatabaseUtil databaseUtil;
     }
 
     public <T extends IModel> T findEntity(IModel entity, Class<T> classObj) {
-        String query = SQLGenerator.generateSelect(entity);
-        ResultSet resultSet = databaseUtil.queryDb(query);
-        return ResultSetMapper.resultToObject(resultSet, classObj);
+        try {
+            String query = SQLGenerator.generateSelect(entity);
+            ResultSet resultSet = databaseUtil.queryDb(query);
+            return ResultSetMapper.resultToObject(resultSet, classObj);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void dropTable(String tableName) {
@@ -50,18 +54,34 @@ private final DatabaseUtil databaseUtil;
         databaseUtil.queryDb(query);
     }
 
-    public void saveEntity(IModel model) {
-        String query = SQLGenerator.generateInsert(model);
-        databaseUtil.queryDb(query);
+    public <T extends IModel> T saveEntity(IModel model, Class<T> classObj) {
+        try {
+            String query = SQLGenerator.generateInsert(model);
+            ResultSet resultSet = databaseUtil.queryDb(query);
+            return ResultSetMapper.resultToObject(resultSet, classObj);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public void updateEntity(IModel model) {
-        String query = SQLGenerator.generateUpdate(model);
-        databaseUtil.queryDb(query);
+    public <T extends IModel> T updateEntity(IModel model, Class<T> classObj) {
+        try {
+            String query = SQLGenerator.generateUpdate(model);
+            ResultSet resultSet = databaseUtil.queryDb(query);
+            return ResultSetMapper.resultToObject(resultSet, classObj);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
-    public void deleteEntity(IModel model) {
-        String query = SQLGenerator.generateDelete(model);
-        databaseUtil.queryDb(query);
+    public <T extends IModel> T deleteEntity(IModel model, Class<T> classObj) {
+        try {
+            String query = SQLGenerator.generateDelete(model);
+            ResultSet resultSet = databaseUtil.queryDb(query);
+            return ResultSetMapper.resultToObject(resultSet, classObj);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
