@@ -1,6 +1,7 @@
 package org.zenith.util;
 
 import org.zenith.annotation.Entity;
+import org.zenith.model.interfaces.IModel;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -30,8 +31,8 @@ public class ReflectionUtil {
      *
      * @return A list of Class objects representing database model classes.
      */
-    public List<Class<?>> getDbModels() {
-        List<Class<?>> classes = new ArrayList<>();
+    public List<Class<? extends IModel>> getDbModels() {
+        List<Class<? extends IModel>> classes = new ArrayList<>();
 
         String path = System.getProperty("user.dir") + "/src/main/java/org/zenith/model";
         File directory = new File(path);
@@ -41,7 +42,7 @@ public class ReflectionUtil {
                 if (file.isDirectory())
                     continue;
 
-                Class<?> classObj = processClass(file.getName());
+                Class<? extends IModel> classObj = (Class<? extends IModel>) processClass(file.getName());
 
                 // Make sure that the model has the Entity annotation
                 if (classObj != null && classObj.isAnnotationPresent(Entity.class)) {

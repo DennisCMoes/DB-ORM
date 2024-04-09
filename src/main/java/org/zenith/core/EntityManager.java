@@ -2,6 +2,7 @@ package org.zenith.core;
 
 import org.zenith.mapper.ResultSetMapper;
 import org.zenith.mapper.SQLGenerator;
+import org.zenith.model.LoginTable;
 import org.zenith.model.UserTable;
 import org.zenith.model.interfaces.IModel;
 import org.zenith.util.DatabaseUtil;
@@ -16,10 +17,15 @@ import java.util.List;
  * It would provide methods for CRUD operations (e.g., save, find, update, delete) and transaction management.
  */
 public class EntityManager {
-    private final DatabaseUtil databaseUtil;
+private final DatabaseUtil databaseUtil;
 
     public EntityManager() {
         this.databaseUtil = DatabaseUtil.getInstance();
+    }
+
+    public void createTables(List<Class<? extends IModel>> classes) {
+        String query = SQLGenerator.generateCreateTable(classes);
+        databaseUtil.queryDb(query);
     }
 
     public void createTable(String tableName, List<Field> fields) {

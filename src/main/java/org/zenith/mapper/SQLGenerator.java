@@ -2,12 +2,14 @@ package org.zenith.mapper;
 
 import org.zenith.annotation.Column;
 import org.zenith.annotation.Id;
+import org.zenith.annotation.relation.OneToOne;
 import org.zenith.enumeration.ColumnType;
 import org.zenith.model.interfaces.IModel;
 import org.zenith.util.ReflectionUtil;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -15,8 +17,20 @@ import java.util.List;
  * It would handle tasks such as generating INSERT, SELECT, UPDATE, and DELETE queries based on entity metadata.
  */
 public class SQLGenerator {
+    public static String generateCreateTable(List<Class<? extends IModel>> classes) {
+        StringBuilder stringBuilder = new StringBuilder();
+
+        for (Class<? extends IModel> classObj : classes) {
+            String createQuery = SQLGenerator.generateCreateTable(classObj.getSimpleName(), Arrays.stream(classObj.getFields()).toList());
+            stringBuilder.append(createQuery).append("\n");
+        }
+
+        return stringBuilder.toString();
+    }
+
     public static String generateCreateTable(String name, List<Field> fields) {
         StringBuilder stringBuilder = new StringBuilder();
+        StringBuilder alterTableBuilder = new StringBuilder();
 
         // Set the name of the table
         stringBuilder.append("CREATE TABLE ").append(name).append("(");
@@ -31,11 +45,20 @@ public class SQLGenerator {
 
             if (fieldAnnotation instanceof Id) {
                 stringBuilder.append(" SERIAL PRIMARY KEY");
-            } else if (fieldAnnotation instanceof Column) {
-                stringBuilder
-                        .append(" ")
-                        .append(((Column) fieldAnnotation).type())
-                        .append(String.format("(%d)", ((Column) fieldAnnotation).size()));
+            } else if (fieldAnnotation instanceof Column column) {
+                stringBuilder.append(String.format(" %s (%d)", column.type(), column.size()));
+            } else if (fieldAnnotation instanceof OneToOne) {
+                stringBuilder.append("_id INT");
+
+                String referencedClassName = field.getType().getSimpleName();
+
+                alterTableBuilder
+                        .append(String.format("ALTER TABLE %s", name)).append("\n")
+                        .append(String.format("ADD CONSTRAINT fk_%s_%s", referencedClassName, name)).append("\n")
+                        .append(String.format("FOREIGN KEY (%s_id)", field.getName())).append("\n")
+                        .append(String.format("REFERENCES %s(id)", referencedClassName)).append("\n")
+                        .append(String.format("ON DELETE %s", "CASCADE"))
+                        .append(";");
             }
 
             if (i + 1 < fields.size()) {
@@ -43,13 +66,16 @@ public class SQLGenerator {
             }
         }
 
-        stringBuilder.append(");");
+        stringBuilder
+                .append(");")
+                .append("\n\n")
+                .append(alterTableBuilder);
 
         return stringBuilder.toString();
     }
 
     public static String generateDropTable(List<String> tables) {
-        return String.format("DROP TABLE IF EXISTS %s;", String.join(",", tables));
+        return String.format("DROP TABLE IF EXISTS %s CASCADE;", String.join(",", tables));
     }
 
     public static String generateInsert(IModel model) {
@@ -63,7 +89,16 @@ public class SQLGenerator {
 
         stringBuilder.append(String.format("INSERT INTO %s (%s) VALUES (",
                 model.getClass().getSimpleName().toLowerCase(),
-                String.join(", ", fields.stream().map(Field::getName).toList())));
+                // TODO: If OneToOne present, add _id behind it
+                String.join(", ",
+                        fields.stream().map(field -> {
+                            String name = field.getName();
+
+                            if (field.isAnnotationPresent(OneToOne.class))
+                                name += "_id";
+
+                            return name;
+                        }).toList())));
 
         for (int i = 0; i < fields.size(); i++) {
             Field field = fields.get(i);
@@ -77,12 +112,23 @@ public class SQLGenerator {
 
                 if (fieldAnnotation instanceof Id) {
                     continue;
-                } else if (fieldAnnotation instanceof Column) {
-                    if (((Column) fieldAnnotation).type().equals(ColumnType.VARCHAR)) {
-                        stringBuilder.append("'").append(field.get(model)).append("'");
+                } else if (fieldAnnotation instanceof Column column) {
+                    if (column.type().equals(ColumnType.VARCHAR)) {
+                        stringBuilder.append(String.format("'%s'", field.get(model)));
+                    } else if (column.type().equals(ColumnType.INTEGER)) {
+                        stringBuilder.append(field.get(model));
                     }
+                } else if (fieldAnnotation instanceof OneToOne) {
+                    Object linkedObj = field.get(model);
+
+                    Class<?> linkedClass = linkedObj.getClass();
+                    Field idField = linkedClass.getDeclaredField("id");
+                    idField.setAccessible(true);
+                    Object id = idField.get(linkedObj);
+
+                    stringBuilder.append(id);
                 }
-            } catch (IllegalAccessException ex) {
+            } catch (IllegalAccessException | NoSuchFieldException ex) {
                 ex.printStackTrace();
             }
 
