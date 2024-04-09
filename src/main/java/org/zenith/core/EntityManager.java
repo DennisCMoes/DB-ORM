@@ -1,12 +1,9 @@
 package org.zenith.core;
 
-import org.zenith.mapper.ResultSetMapper;
+import org.zenith.mapper.EntityMapper;
 import org.zenith.mapper.SQLGenerator;
-import org.zenith.model.LoginTable;
-import org.zenith.model.UserTable;
 import org.zenith.model.interfaces.IModel;
 import org.zenith.util.DatabaseUtil;
-import org.zenith.util.ReflectionUtil;
 
 import java.lang.reflect.Field;
 import java.sql.ResultSet;
@@ -36,14 +33,14 @@ public class EntityManager {
     public <T extends IModel> List<T> findAll(String tableName, Class<T> classObj) {
         String query = SQLGenerator.generateSelect(tableName);
         ResultSet resultSet = databaseUtil.queryDb(query);
-        return ResultSetMapper.resultToList(resultSet, classObj);
+        return EntityMapper.resultToList(resultSet, classObj);
     }
 
     public <T extends IModel> T findEntity(IModel entity, Class<T> classObj) {
         try {
             String query = SQLGenerator.generateSelect(entity);
             ResultSet resultSet = databaseUtil.queryDb(query);
-            return ResultSetMapper.resultToObject(resultSet, classObj);
+            return EntityMapper.resultToObject(resultSet, classObj);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
@@ -58,7 +55,7 @@ public class EntityManager {
         try {
             String query = SQLGenerator.generateInsert(model);
             ResultSet resultSet = databaseUtil.queryDb(query);
-            return ResultSetMapper.resultToObject(resultSet, classObj);
+            return EntityMapper.resultToObject(resultSet, classObj);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
@@ -68,7 +65,7 @@ public class EntityManager {
         try {
             String query = SQLGenerator.generateUpdate(model);
             ResultSet resultSet = databaseUtil.queryDb(query);
-            return ResultSetMapper.resultToObject(resultSet, classObj);
+            return EntityMapper.resultToObject(resultSet, classObj);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
@@ -79,7 +76,7 @@ public class EntityManager {
         try {
             String query = SQLGenerator.generateDelete(model);
             ResultSet resultSet = databaseUtil.queryDb(query);
-            return ResultSetMapper.resultToObject(resultSet, classObj);
+            return EntityMapper.resultToObject(resultSet, classObj);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }

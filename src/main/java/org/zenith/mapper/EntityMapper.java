@@ -16,7 +16,7 @@ import java.util.List;
  * It would contain methods for converting database records to
  * instances of entity classes based on entity mappings.
  */
-public class ResultSetMapper {
+public class EntityMapper {
     public static <T extends IModel> List<T> resultToList(ResultSet resultSet, Class<T> classObj) {
         List<T> objects = new ArrayList<>();
 
