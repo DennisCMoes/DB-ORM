@@ -38,6 +38,9 @@ public class ReflectionUtil {
 
         if (directory.exists() && directory.isDirectory()) {
             for (File file : Objects.requireNonNull(directory.listFiles())) {
+                if (file.isDirectory())
+                    continue;
+
                 Class<?> classObj = processClass(file.getName());
 
                 // Make sure that the model has the Entity annotation

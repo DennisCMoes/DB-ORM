@@ -2,6 +2,9 @@ package org.zenith.mapper;
 
 import org.zenith.annotation.Column;
 import org.zenith.annotation.Id;
+import org.zenith.enumeration.ColumnType;
+import org.zenith.model.interfaces.IModel;
+import org.zenith.util.ReflectionUtil;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -27,9 +30,7 @@ public class SQLGenerator {
             Annotation fieldAnnotation = field.getDeclaredAnnotations()[0];
 
             if (fieldAnnotation instanceof Id) {
-                stringBuilder
-                        .append(" INTEGER ")
-                        .append("PRIMARY KEY");
+                stringBuilder.append(" SERIAL PRIMARY KEY");
             } else if (fieldAnnotation instanceof Column) {
                 stringBuilder
                         .append(" ")
@@ -49,5 +50,49 @@ public class SQLGenerator {
 
     public static String generateDropTable(List<String> tables) {
         return String.format("DROP TABLE IF EXISTS %s;", String.join(",", tables));
+    }
+
+    public static String generateInsert(IModel model) {
+        ReflectionUtil reflectionUtil = new ReflectionUtil();
+
+        StringBuilder stringBuilder = new StringBuilder();
+        List<Field> fields = reflectionUtil.getFieldsOfModel(model.getClass())
+                .stream()
+                .filter(field -> !field.isAnnotationPresent(Id.class))
+                .toList();
+
+        stringBuilder.append(String.format("INSERT INTO %s (%s) VALUES (",
+                model.getClass().getSimpleName().toLowerCase(),
+                String.join(", ", fields.stream().map(Field::getName).toList())));
+
+        for (int i = 0; i < fields.size(); i++) {
+            Field field = fields.get(i);
+
+            // Ensure we can read the value of the field
+            field.setAccessible(true);
+
+            try {
+                // TODO: Make this work with multiple annotations
+                Annotation fieldAnnotation = field.getDeclaredAnnotations()[0];
+
+                if (fieldAnnotation instanceof Id) {
+                    continue;
+                } else if (fieldAnnotation instanceof Column) {
+                    if (((Column) fieldAnnotation).type().equals(ColumnType.VARCHAR)) {
+                        stringBuilder.append("'").append(field.get(model)).append("'");
+                    }
+                }
+            } catch (IllegalAccessException ex) {
+                ex.printStackTrace();
+            }
+
+            if (i + 1 < fields.size()) {
+                stringBuilder.append(", ");
+            }
+        }
+
+        stringBuilder.append(");");
+
+        return stringBuilder.toString();
     }
 }
