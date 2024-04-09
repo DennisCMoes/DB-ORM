@@ -24,6 +24,11 @@ public class LoginTable implements IModel {
         this.email = email;
     }
 
+    public LoginTable(String email, UserTable user) {
+        this.email = email;
+        this.user = user;
+    }
+
     @Override
     public String toString() {
         return String.format("{id=%d, email=%s}", id, email);

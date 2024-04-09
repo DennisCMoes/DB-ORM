@@ -1,12 +1,15 @@
 package org.zenith.mapper;
 
+import org.zenith.annotation.relation.ManyToOne;
+import org.zenith.annotation.relation.OneToOne;
+import org.zenith.core.EntityManager;
 import org.zenith.model.interfaces.IModel;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * A utility class used to map database result sets to Java objects.
@@ -49,8 +52,27 @@ public class ResultSetMapper {
             for (Field field : fields) {
                 field.setAccessible(true);
 
-                Object value = resultSet.getObject(field.getName());
-                field.set(object, value);
+                String fieldName = field.getName();
+                // TODO: Make this work with multiple annotations
+                Annotation fieldAnnotation = field.getDeclaredAnnotations()[0];
+                Object value;
+
+                if (fieldAnnotation instanceof OneToOne || fieldAnnotation instanceof ManyToOne) {
+                    fieldName += "_id";
+
+                    value = resultSet.getObject(fieldName);
+                    T model = (T) field.getType().getConstructor().newInstance();
+                    model.getClass().getField("id").set(model, value);
+
+                    EntityManager entityManager = new EntityManager();
+                    Object linkedObj = entityManager.findEntity(model, model.getClass());
+
+                    // Link the new linked object to the original object
+                    field.set(object, linkedObj);
+                } else {
+                    value = resultSet.getObject(fieldName);
+                    field.set(object, value);
+                }
             }
 
             return object;
