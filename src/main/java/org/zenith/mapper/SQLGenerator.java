@@ -95,4 +95,25 @@ public class SQLGenerator {
 
         return stringBuilder.toString();
     }
+
+    public static String generateSelect(String tableName) {
+        return String.format("SELECT * FROM %s;", tableName);
+    }
+
+    public static String generateSelect(IModel model) {
+        try {
+            String tableName = model.getClass().getSimpleName().toLowerCase();
+            Field idField = model.getClass().getDeclaredField("id");
+            idField.setAccessible(true);
+
+            Object idValue = idField.get(model);
+
+            return String.format("SELECT * FROM %s WHERE id=%s;",
+                    tableName,
+                    idValue);
+        } catch (NoSuchFieldException | IllegalAccessException ex) {
+            ex.printStackTrace();
+            return null;
+        }
+    }
 }

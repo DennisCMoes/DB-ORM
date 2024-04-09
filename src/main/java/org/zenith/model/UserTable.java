@@ -14,7 +14,14 @@ public class UserTable implements IModel {
     @Column(type = ColumnType.VARCHAR, size = 64)
     public String name;
 
+    public UserTable() {}
+
     public UserTable(String name) {
         this.name = name;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("{id=%d, name=%s}", id, name);
     }
 }

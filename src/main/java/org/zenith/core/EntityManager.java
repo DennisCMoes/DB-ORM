@@ -1,5 +1,6 @@
 package org.zenith.core;
 
+import org.zenith.mapper.ResultSetMapper;
 import org.zenith.mapper.SQLGenerator;
 import org.zenith.model.UserTable;
 import org.zenith.model.interfaces.IModel;
@@ -7,6 +8,7 @@ import org.zenith.util.DatabaseUtil;
 import org.zenith.util.ReflectionUtil;
 
 import java.lang.reflect.Field;
+import java.sql.ResultSet;
 import java.util.List;
 
 /**
@@ -23,6 +25,18 @@ public class EntityManager {
     public void createTable(String tableName, List<Field> fields) {
         String query = SQLGenerator.generateCreateTable(tableName, fields);
         databaseUtil.queryDb(query);
+    }
+
+    public <T extends IModel> List<T> findAll(String tableName, Class<T> classObj) {
+        String query = SQLGenerator.generateSelect(tableName);
+        ResultSet resultSet = databaseUtil.queryDb(query);
+        return ResultSetMapper.resultToList(resultSet, classObj);
+    }
+
+    public <T extends IModel> T findEntity(IModel entity, Class<T> classObj) {
+        String query = SQLGenerator.generateSelect(entity);
+        ResultSet resultSet = databaseUtil.queryDb(query);
+        return ResultSetMapper.resultToObject(resultSet, classObj);
     }
 
     public void dropTable(String tableName) {
