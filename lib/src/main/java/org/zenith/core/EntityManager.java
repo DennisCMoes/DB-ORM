@@ -5,7 +5,6 @@ import org.zenith.mapper.SQLGenerator;
 import org.zenith.model.interfaces.IModel;
 import org.zenith.util.DatabaseUtil;
 
-import java.lang.reflect.Field;
 import java.net.ConnectException;
 import java.sql.ResultSet;
 import java.util.List;
@@ -23,12 +22,12 @@ public class EntityManager {
 
     public void createTables(List<Class<? extends IModel>> classes) {
         String query = SQLGenerator.generateCreateTable(classes);
-        databaseUtil.queryDb(query);
+        databaseUtil.updateDb(query);
     }
 
     public void alterTables(List<Class<? extends IModel>> classes) {
         String query = SQLGenerator.generateAddForeignKey(classes);
-        databaseUtil.queryDb(query);
+        databaseUtil.updateDb(query);
     }
 
     public <T extends IModel> List<T> findAll(Class<T> classObj) {
@@ -49,7 +48,7 @@ public class EntityManager {
 
     public void dropTable(String tableName) {
         String query = SQLGenerator.generateDropTable(List.of(tableName));
-        databaseUtil.queryDb(query);
+        databaseUtil.updateDb(query);
     }
 
     public <T extends IModel> T saveEntity(IModel model, Class<T> classObj) {

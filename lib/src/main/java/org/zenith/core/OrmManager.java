@@ -1,10 +1,11 @@
 package org.zenith.core;
 
+import org.zenith.model.ToDoItem;
+import org.zenith.model.ToDoList;
 import org.zenith.model.interfaces.IModel;
 import org.zenith.util.ReflectionUtil;
 
 import java.net.ConnectException;
-import java.sql.SQLException;
 import java.util.List;
 
 /**
@@ -23,7 +24,7 @@ public class OrmManager {
 
     public void initializeDatabase() {
         List<Class<? extends IModel>> classes = reflectionUtil.getDbModels();
-//        classes.forEach(classObj -> entityManager.createTable(classObj.getSimpleName(), reflectionUtil.getFieldsOfModel(classObj)));
+
         entityManager.createTables(classes);
         entityManager.alterTables(classes);
     }
@@ -34,6 +35,10 @@ public class OrmManager {
     }
 
     public void migrateToDatabase() {
+        ToDoList toDoList = entityManager.saveEntity(new ToDoList("List 1"), ToDoList.class);
 
+        ToDoItem toDoItem1 = entityManager.saveEntity(new ToDoItem("Item 1", "Description", toDoList), ToDoItem.class);
+        ToDoItem toDoItem2 = entityManager.saveEntity(new ToDoItem("Item 2", "Description", toDoList), ToDoItem.class);
+        ToDoItem toDoItem3 = entityManager.saveEntity(new ToDoItem("Item 3", "Description", toDoList), ToDoItem.class);
     }
 }

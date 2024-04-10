@@ -29,27 +29,17 @@ public class DatabaseUtil {
         return DatabaseUtil.instance;
     }
 
-    public PreparedStatement prepareQuery(String query) {
+    public void updateDb(String query) {
         try {
-            return connection.prepareStatement(query);
+            connection.createStatement().executeUpdate(query);
         } catch (Exception ex) {
             ex.printStackTrace();
-            return null;
         }
     }
 
     public ResultSet queryDb(String query) {
         try {
             return connection.createStatement().executeQuery(query);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            return null;
-        }
-    }
-
-    public ResultSet queryDb(PreparedStatement statement) {
-        try {
-            return statement.executeQuery();
         } catch (Exception ex) {
             ex.printStackTrace();
             return null;
