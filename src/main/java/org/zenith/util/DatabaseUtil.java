@@ -1,23 +1,27 @@
 package org.zenith.util;
 
+import java.net.ConnectException;
 import java.sql.*;
-import java.util.List;
 
 public class DatabaseUtil {
     public static DatabaseUtil instance;
     private Connection connection;
 
-    private DatabaseUtil() {
+    private DatabaseUtil() throws ConnectException {
         String connectionUrl = "jdbc:postgresql://127.0.0.1:5432/postgres?user=user&password=password";
 
         try {
             this.connection = DriverManager.getConnection(connectionUrl);
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        } catch (SQLException ex) {
+            if (ex.getCause() instanceof ConnectException) {
+                throw (ConnectException) ex.getCause();
+            } else {
+                ex.printStackTrace();
+            }
         }
     }
 
-    public static DatabaseUtil getInstance() {
+    public static DatabaseUtil getInstance() throws ConnectException {
         if (DatabaseUtil.instance == null) {
             instance = new DatabaseUtil();
         }

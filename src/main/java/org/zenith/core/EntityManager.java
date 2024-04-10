@@ -6,6 +6,7 @@ import org.zenith.model.interfaces.IModel;
 import org.zenith.util.DatabaseUtil;
 
 import java.lang.reflect.Field;
+import java.net.ConnectException;
 import java.sql.ResultSet;
 import java.util.List;
 
@@ -16,7 +17,7 @@ import java.util.List;
 public class EntityManager {
     private final DatabaseUtil databaseUtil;
 
-    public EntityManager() {
+    public EntityManager() throws ConnectException {
         this.databaseUtil = DatabaseUtil.getInstance();
     }
 
