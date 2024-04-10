@@ -78,17 +78,8 @@ public class SQLGenerator {
                 String referencedClassName = field.getType().getSimpleName();
 
                 queryBuilder.append(String.format("%s INT", foreignKeyName));
-//                queryBuilder.append(String.format("FOREIGN KEY (%s) REFERENCES %s(id) ON DELETE CASCADE", foreignKeyName, referencedClassName));
-
-                // TODO: Change to FOREIGN KEY (parentList_id) REFERENCES ToDoList(id) ON DELETE CASCADE
-//                alterTableBuilder // TODO: If OneToOne add unique field
-//                        .append(String.format("ALTER TABLE %s%n", tableName))
-//                        .append(String.format("ADD CONSTRAINT fk_%s_%s%n", referencedClassName, tableName))
-//                        .append(String.format("FOREIGN KEY (%s)%n", foreignKeyName))
-//                        // TODO: Make (id) dynamic so that it will get the field with the @Id annotation instead of
-//                        //  hardcoded ID
-//                        .append(String.format("REFERENCES %s(id)%n", referencedClassName))
-//                        .append(String.format("ON DELETE %s;%n", "CASCADE"));
+                // TODO: If OneToOne add unique field
+                // TODO: Make (id) dynamic so that it will get the field with the @Id annotation instead of
             }
 
             if (i + 1 < fields.size())
@@ -136,95 +127,111 @@ public class SQLGenerator {
         return String.format("DROP TABLE IF EXISTS %s CASCADE;", String.join(",", tables));
     }
 
-    public static String generateInsert(IModel model) throws NoSuchFieldException, IllegalAccessException {
-        StringBuilder queryBuilder = new StringBuilder();
-        List<Field> fields = SQLGenerator.getFieldsWithoutId(model);
+    public static String generateInsert(IModel model) {
+        try {
+            StringBuilder queryBuilder = new StringBuilder();
+            List<Field> fields = SQLGenerator.getFieldsWithoutId(model);
 
-        String tableName = model.getClass().getSimpleName().toLowerCase();
-        String tableCols = String.join(", ", fields.stream().map(SQLGenerator::getFieldName).toList());
+            String tableName = model.getClass().getSimpleName().toLowerCase();
+            String tableCols = String.join(", ", fields.stream().map(SQLGenerator::getFieldName).toList());
 
-        queryBuilder.append(String.format("INSERT INTO %s (%s) VALUES (", tableName, tableCols));
+            queryBuilder.append(String.format("INSERT INTO %s (%s) VALUES (", tableName, tableCols));
 
-        for (int i = 0; i < fields.size(); i++) {
-            Field field = fields.get(i);
+            for (int i = 0; i < fields.size(); i++) {
+                Field field = fields.get(i);
 
-            String fieldName = field.getName();
-            Object fieldValue = SQLGenerator.getFieldValue(model, fieldName);
+                String fieldName = field.getName();
+                Object fieldValue = SQLGenerator.getFieldValue(model, fieldName);
 
-            // TODO: Make this work with multiple annotations
-            Annotation fieldAnnotation = field.getDeclaredAnnotations()[0];
+                // TODO: Make this work with multiple annotations
+                Annotation fieldAnnotation = field.getDeclaredAnnotations()[0];
 
-            if (fieldAnnotation instanceof Column column) {
-                switch (column.type()) {
-                    case VARCHAR, TEXT -> queryBuilder.append(String.format("'%s'", fieldValue));
-                    case INTEGER, BOOLEAN -> queryBuilder.append(String.format("%s", fieldValue));
+                if (fieldAnnotation instanceof Column column) {
+                    switch (column.type()) {
+                        case VARCHAR, TEXT -> queryBuilder.append(String.format("'%s'", fieldValue));
+                        case INTEGER, BOOLEAN -> queryBuilder.append(String.format("%s", fieldValue));
+                    }
+                } else if (fieldAnnotation instanceof OneToOne || fieldAnnotation instanceof ManyToOne) {
+                    IModel linkedObj = (IModel) field.get(model);
+                    Object idValue = SQLGenerator.getFieldValue(linkedObj, "id");
+                    queryBuilder.append(idValue);
                 }
-            } else if (fieldAnnotation instanceof OneToOne || fieldAnnotation instanceof ManyToOne) {
-                IModel linkedObj = (IModel) field.get(model);
-                Object idValue = SQLGenerator.getFieldValue(linkedObj, "id");
-                queryBuilder.append(idValue);
+
+                if (i + 1 < fields.size()) {
+                    queryBuilder.append(", ");
+                }
             }
 
-            if (i + 1 < fields.size()) {
-                queryBuilder.append(", ");
-            }
+            queryBuilder.append(") RETURNING *;");
+
+            return queryBuilder.toString();
+        } catch (NoSuchFieldException | IllegalAccessException ex) {
+            throw new RuntimeException(ex);
         }
-
-        queryBuilder.append(") RETURNING *;");
-
-        return queryBuilder.toString();
     }
 
     public static String generateSelect(String tableName) {
         return String.format("SELECT * FROM %s;", tableName);
     }
 
-    public static String generateSelect(IModel model) throws NoSuchFieldException, IllegalAccessException {
-        String tableName = model.getClass().getSimpleName().toLowerCase();
-        Integer idValue = (Integer) SQLGenerator.getFieldValue(model, "id");
+    public static String generateSelect(IModel model) {
+        try {
+            String tableName = model.getClass().getSimpleName().toLowerCase();
+            Integer idValue = (Integer) SQLGenerator.getFieldValue(model, "id");
 
-        return String.format("SELECT * FROM %s WHERE id=%s;", tableName, idValue);
-    }
-
-    public static String generateUpdate(IModel model) throws NoSuchFieldException, IllegalAccessException {
-        StringBuilder queryBuilder = new StringBuilder();
-        String tableName = model.getClass().getSimpleName().toLowerCase();
-
-        queryBuilder.append(String.format("UPDATE %s SET ", tableName));
-
-        List<Field> fields = SQLGenerator.getFieldsWithoutId(model);
-
-        for (int i = 0; i < fields.size(); i++) {
-            Field field = fields.get(i);
-            Object fieldValue = SQLGenerator.getFieldValue(model, field.getName());
-
-            Annotation fieldAnnotation = field.getDeclaredAnnotations()[0];
-
-            if (fieldAnnotation instanceof Column column) {
-                switch (column.type()) {
-                    case VARCHAR, TEXT -> queryBuilder.append(String.format("%s='%s'", field.getName(), fieldValue));
-                    case INTEGER, BOOLEAN -> queryBuilder.append(String.format("%s=%s", field.getName(), fieldValue));
-                }
-            } else if (fieldAnnotation instanceof OneToOne || fieldAnnotation instanceof ManyToOne) {
-                String fieldName = field.getName() + "_id";
-                queryBuilder.append(String.format("%s=%s", fieldName, fieldValue));
-            }
-
-            if (i + 1 < fields.size()) {
-                queryBuilder.append(", ");
-            }
-
-            Object idValue = SQLGenerator.getFieldValue(model, "id");
-            queryBuilder.append(String.format(" WHERE id=%s RETURNING *;", idValue));
+            return String.format("SELECT * FROM %s WHERE id=%s;", tableName, idValue);
+        } catch (NoSuchFieldException | IllegalAccessException ex) {
+            throw new RuntimeException(ex);
         }
-
-        return queryBuilder.toString();
     }
 
-    public static String generateDelete(IModel model) throws NoSuchFieldException, IllegalAccessException {
-        String tableName = model.getClass().getSimpleName().toLowerCase();
-        Integer id = (Integer) SQLGenerator.getFieldValue(model, "id");
+    public static String generateUpdate(IModel model) {
+        try {
+            StringBuilder queryBuilder = new StringBuilder();
+            String tableName = model.getClass().getSimpleName().toLowerCase();
 
-        return String.format("DELETE FROM %s WHERE id=%d RETURNING *;", tableName, id);
+            queryBuilder.append(String.format("UPDATE %s SET ", tableName));
+
+            List<Field> fields = SQLGenerator.getFieldsWithoutId(model);
+
+            for (int i = 0; i < fields.size(); i++) {
+                Field field = fields.get(i);
+                Object fieldValue = SQLGenerator.getFieldValue(model, field.getName());
+
+                Annotation fieldAnnotation = field.getDeclaredAnnotations()[0];
+
+                if (fieldAnnotation instanceof Column column) {
+                    switch (column.type()) {
+                        case VARCHAR, TEXT -> queryBuilder.append(String.format("%s='%s'", field.getName(), fieldValue));
+                        case INTEGER, BOOLEAN -> queryBuilder.append(String.format("%s=%s", field.getName(), fieldValue));
+                    }
+                } else if (fieldAnnotation instanceof OneToOne || fieldAnnotation instanceof ManyToOne) {
+                    String fieldName = field.getName() + "_id";
+                    queryBuilder.append(String.format("%s=%s", fieldName, fieldValue));
+                }
+
+                if (i + 1 < fields.size()) {
+                    queryBuilder.append(", ");
+                }
+
+                Object idValue = SQLGenerator.getFieldValue(model, "id");
+                queryBuilder.append(String.format(" WHERE id=%s RETURNING *;", idValue));
+            }
+
+            return queryBuilder.toString();
+        } catch (NoSuchFieldException | IllegalAccessException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    public static String generateDelete(IModel model) {
+        try {
+            String tableName = model.getClass().getSimpleName().toLowerCase();
+            Integer id = (Integer) SQLGenerator.getFieldValue(model, "id");
+
+            return String.format("DELETE FROM %s WHERE id=%d RETURNING *;", tableName, id);
+        } catch (NoSuchFieldException | IllegalAccessException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 }

@@ -3,4 +3,5 @@ module org.zenith.lib {
 
     exports org.zenith.core;
     exports org.zenith.model;
+    exports org.zenith.model.interfaces;
 }

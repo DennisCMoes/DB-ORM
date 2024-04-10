@@ -7,6 +7,7 @@ import org.zenith.util.DatabaseUtil;
 
 import java.net.ConnectException;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
 /**
@@ -21,19 +22,40 @@ public class EntityManager {
     }
 
     public void createTables(List<Class<? extends IModel>> classes) {
-        String query = SQLGenerator.generateCreateTable(classes);
-        databaseUtil.updateDb(query);
+        try {
+            String query = SQLGenerator.generateCreateTable(classes);
+            databaseUtil.updateDb(query);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     public void alterTables(List<Class<? extends IModel>> classes) {
-        String query = SQLGenerator.generateAddForeignKey(classes);
-        databaseUtil.updateDb(query);
+        try {
+            String query = SQLGenerator.generateAddForeignKey(classes);
+            databaseUtil.updateDb(query);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    public void dropTable(String tableName) {
+        try {
+            String query = SQLGenerator.generateDropTable(List.of(tableName));
+            databaseUtil.updateDb(query);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     public <T extends IModel> List<T> findAll(Class<T> classObj) {
-        String query = SQLGenerator.generateSelect(classObj.getSimpleName().toLowerCase());
-        ResultSet resultSet = databaseUtil.queryDb(query);
-        return EntityMapper.resultToList(resultSet, classObj);
+        try {
+            String query = SQLGenerator.generateSelect(classObj.getSimpleName().toLowerCase());
+            ResultSet resultSet = databaseUtil.queryDb(query);
+            return EntityMapper.resultToList(resultSet, classObj);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     public <T extends IModel> T findEntity(IModel entity, Class<T> classObj) {
@@ -41,14 +63,9 @@ public class EntityManager {
             String query = SQLGenerator.generateSelect(entity);
             ResultSet resultSet = databaseUtil.queryDb(query);
             return EntityMapper.resultToObject(resultSet, classObj);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
         }
-    }
-
-    public void dropTable(String tableName) {
-        String query = SQLGenerator.generateDropTable(List.of(tableName));
-        databaseUtil.updateDb(query);
     }
 
     public <T extends IModel> T saveEntity(IModel model, Class<T> classObj) {
@@ -56,8 +73,8 @@ public class EntityManager {
             String query = SQLGenerator.generateInsert(model);
             ResultSet resultSet = databaseUtil.queryDb(query);
             return EntityMapper.resultToObject(resultSet, classObj);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
@@ -66,10 +83,9 @@ public class EntityManager {
             String query = SQLGenerator.generateUpdate(model);
             ResultSet resultSet = databaseUtil.queryDb(query);
             return EntityMapper.resultToObject(resultSet, classObj);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
         }
-
     }
 
     public <T extends IModel> T deleteEntity(IModel model, Class<T> classObj) {
@@ -77,8 +93,8 @@ public class EntityManager {
             String query = SQLGenerator.generateDelete(model);
             ResultSet resultSet = databaseUtil.queryDb(query);
             return EntityMapper.resultToObject(resultSet, classObj);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
         }
     }
 }

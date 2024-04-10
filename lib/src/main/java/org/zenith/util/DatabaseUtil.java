@@ -29,20 +29,11 @@ public class DatabaseUtil {
         return DatabaseUtil.instance;
     }
 
-    public void updateDb(String query) {
-        try {
-            connection.createStatement().executeUpdate(query);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+    public void updateDb(String query) throws SQLException {
+        connection.createStatement().executeUpdate(query);
     }
 
-    public ResultSet queryDb(String query) {
-        try {
-            return connection.createStatement().executeQuery(query);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            return null;
-        }
+    public ResultSet queryDb(String query) throws SQLException {
+        return connection.createStatement().executeQuery(query);
     }
 }

@@ -7,7 +7,10 @@ import org.zenith.model.interfaces.IModel;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.net.ConnectException;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,24 +20,21 @@ import java.util.List;
  * instances of entity classes based on entity mappings.
  */
 public class EntityMapper {
-    public static <T extends IModel> List<T> resultToList(ResultSet resultSet, Class<T> classObj) {
+    public static <T extends IModel> List<T> resultToList(ResultSet resultSet, Class<T> classObj) throws SQLException {
         List<T> objects = new ArrayList<>();
 
-        try {
-            while (resultSet.next())
-                objects.add(resultToObject(resultSet, classObj, false));
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+        while (resultSet.next())
+            objects.add(resultToObject(resultSet, classObj, false));
 
         return objects;
     }
 
-    public static <T extends IModel> T resultToObject(ResultSet resultSet, Class<T> classObj) {
+    public static <T extends IModel> T resultToObject(ResultSet resultSet, Class<T> classObj) throws SQLException {
         return resultToObject(resultSet, classObj, true);
     }
 
-    private static <T extends IModel> T resultToObject(ResultSet resultSet, Class<T> classObj, boolean hasOneRow) {
+    private static <T extends IModel> T resultToObject(ResultSet resultSet, Class<T> classObj, boolean hasOneRow)
+            throws SQLException {
         try {
             Field[] fields = classObj.getDeclaredFields();
             T object = classObj.getDeclaredConstructor().newInstance();
@@ -69,7 +69,8 @@ public class EntityMapper {
             }
 
             return object;
-        } catch (Exception ex) {
+        } catch (ConnectException | NoSuchFieldException | InstantiationException |
+                 NoSuchMethodException | InvocationTargetException | IllegalAccessException ex) {
             ex.printStackTrace();
             return null;
         }

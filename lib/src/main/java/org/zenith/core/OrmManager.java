@@ -30,8 +30,10 @@ public class OrmManager {
     }
 
     public void clearDatabase() {
-        List<Class<? extends IModel>> classes = reflectionUtil.getDbModels();
-        classes.forEach(classObj -> entityManager.dropTable(classObj.getSimpleName()));
+        reflectionUtil.getDbModels()
+                .stream()
+                .map(Class::getSimpleName)
+                .forEach(entityManager::dropTable);
     }
 
     public void migrateToDatabase() {
