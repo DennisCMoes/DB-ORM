@@ -25,6 +25,7 @@ public class OrmManager {
         List<Class<? extends IModel>> classes = reflectionUtil.getDbModels();
 //        classes.forEach(classObj -> entityManager.createTable(classObj.getSimpleName(), reflectionUtil.getFieldsOfModel(classObj)));
         entityManager.createTables(classes);
+        entityManager.alterTables(classes);
     }
 
     public void clearDatabase() {

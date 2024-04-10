@@ -17,11 +17,13 @@ public class ReflectionUtil {
      * @param classname The name of the class to be processed.
      * @return The Class object corresponding to the given classname, or null if the class is not found.
      */
-    private Class<?> processClass(String classname) {
+    private Class<? extends IModel> processClass(String classname) {
         try {
-            return Class.forName("org.zenith.model." + classname.replace(".java", ""));
+            @SuppressWarnings("unchecked")
+            Class<? extends IModel> model = (Class<? extends IModel>) Class.forName("org.zenith.model." + classname.replace(".java", ""));
+
+            return model;
         } catch (ClassNotFoundException ex) {
-            ex.printStackTrace();
             return null;
         }
     }
@@ -34,7 +36,7 @@ public class ReflectionUtil {
     public List<Class<? extends IModel>> getDbModels() {
         List<Class<? extends IModel>> classes = new ArrayList<>();
 
-        String path = System.getProperty("user.dir") + "/src/main/java/org/zenith/model";
+        String path = System.getProperty("user.dir") + "/lib/src/main/java/org/zenith/model";
         File directory = new File(path);
 
         if (directory.exists() && directory.isDirectory()) {
@@ -42,7 +44,7 @@ public class ReflectionUtil {
                 if (file.isDirectory())
                     continue;
 
-                Class<? extends IModel> classObj = (Class<? extends IModel>) processClass(file.getName());
+                Class<? extends IModel> classObj = processClass(file.getName());
 
                 // Make sure that the model has the Entity annotation
                 if (classObj != null && classObj.isAnnotationPresent(Entity.class)) {

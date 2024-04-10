@@ -4,6 +4,7 @@ import org.zenith.annotation.Column;
 import org.zenith.annotation.Id;
 import org.zenith.annotation.relation.ManyToOne;
 import org.zenith.annotation.relation.OneToOne;
+import org.zenith.enumeration.ColumnType;
 import org.zenith.model.interfaces.IModel;
 import org.zenith.util.ReflectionUtil;
 
@@ -45,16 +46,14 @@ public class SQLGenerator {
         StringBuilder stringBuilder = new StringBuilder();
 
         for (Class<? extends IModel> classObj : classes) {
-            String createQuery = SQLGenerator.generateCreateTable(classObj.getSimpleName(), Arrays.stream(classObj.getFields()).toList());
-            stringBuilder.append(createQuery).append("\n");
+            stringBuilder.append(generateCreateTable(classObj.getSimpleName(), Arrays.stream(classObj.getFields()).toList())).append("\n");
         }
 
         return stringBuilder.toString();
     }
 
-    public static String generateCreateTable(String tableName, List<Field> fields) {
+    private static String generateCreateTable(String tableName, List<Field> fields) {
         StringBuilder queryBuilder = new StringBuilder();
-        StringBuilder alterTableBuilder = new StringBuilder();
 
         // Set the name of the table
         queryBuilder.append(String.format("CREATE TABLE %s (", tableName));
@@ -69,26 +68,66 @@ public class SQLGenerator {
             if (fieldAnnotation instanceof Id) {
                 queryBuilder.append(String.format("%s SERIAL PRIMARY KEY", fieldName));
             } else if (fieldAnnotation instanceof Column column) {
-                queryBuilder.append(String.format("%s %s (%d)", fieldName, column.type(), column.size()));
+                if (column.type().equals(ColumnType.TEXT)) {
+                    queryBuilder.append(String.format("%s %s", fieldName, column.type()));
+                } else {
+                    queryBuilder.append(String.format("%s %s (%d)", fieldName, column.type(), column.size()));
+                }
             } else if (fieldAnnotation instanceof OneToOne || fieldAnnotation instanceof ManyToOne) {
                 String foreignKeyName = fieldName + "_id";
                 String referencedClassName = field.getType().getSimpleName();
 
                 queryBuilder.append(String.format("%s INT", foreignKeyName));
+//                queryBuilder.append(String.format("FOREIGN KEY (%s) REFERENCES %s(id) ON DELETE CASCADE", foreignKeyName, referencedClassName));
 
-                alterTableBuilder // TODO: If OneToOne add unique field
-                        .append(String.format("ALTER TABLE %s%n", tableName))
-                        .append(String.format("ADD CONSTRAINT fk_%s_%s%n", referencedClassName, tableName))
-                        .append(String.format("FOREIGN KEY (%s)%n", foreignKeyName))
-                        .append(String.format("REFERENCES %s(id)%n", referencedClassName))
-                        .append(String.format("ON DELETE %s;%n", "CASCADE"));
+                // TODO: Change to FOREIGN KEY (parentList_id) REFERENCES ToDoList(id) ON DELETE CASCADE
+//                alterTableBuilder // TODO: If OneToOne add unique field
+//                        .append(String.format("ALTER TABLE %s%n", tableName))
+//                        .append(String.format("ADD CONSTRAINT fk_%s_%s%n", referencedClassName, tableName))
+//                        .append(String.format("FOREIGN KEY (%s)%n", foreignKeyName))
+//                        // TODO: Make (id) dynamic so that it will get the field with the @Id annotation instead of
+//                        //  hardcoded ID
+//                        .append(String.format("REFERENCES %s(id)%n", referencedClassName))
+//                        .append(String.format("ON DELETE %s;%n", "CASCADE"));
             }
 
             if (i + 1 < fields.size())
                 queryBuilder.append(", ");
         }
 
-        queryBuilder.append(String.format(");%n%n%s", alterTableBuilder));
+        queryBuilder.append(");");
+
+        return queryBuilder.toString();
+    }
+
+    public static String generateAddForeignKey(List<Class<? extends IModel>> classes) {
+        StringBuilder queryBuilder = new StringBuilder();
+
+        for (Class<? extends IModel> classObj : classes) {
+            queryBuilder.append(generateAddForeignKey(classObj.getSimpleName().toLowerCase(), Arrays.stream(classObj.getFields()).toList())).append("\n");
+        }
+
+        return queryBuilder.toString();
+    }
+
+    private static String generateAddForeignKey(String tableName, List<Field> fields) {
+        StringBuilder queryBuilder = new StringBuilder();
+
+        for (Field field : fields) {
+            // TODO: Make this work with multiple annotations
+            Annotation fieldAnnotation = field.getDeclaredAnnotations()[0];
+
+            if (fieldAnnotation instanceof OneToOne || fieldAnnotation instanceof ManyToOne) {
+                String fieldName = field.getName() + "_id";
+                String referencedClassName = field.getType().getSimpleName().toLowerCase();
+
+                // ALTER TABLE message ADD FOREIGN KEY (sender) REFERENCES users;
+                queryBuilder.append(String.format("ALTER TABLE %s ADD FOREIGN KEY (%s) REFERENCES %s;", tableName, fieldName, referencedClassName));
+            }
+        }
+
+        if (!queryBuilder.isEmpty())
+            queryBuilder.append("\n");
 
         return queryBuilder.toString();
     }
@@ -117,8 +156,8 @@ public class SQLGenerator {
 
             if (fieldAnnotation instanceof Column column) {
                 switch (column.type()) {
-                    case VARCHAR -> queryBuilder.append(String.format("'%s'", fieldValue));
-                    case INTEGER -> queryBuilder.append(String.format("%s", fieldValue));
+                    case VARCHAR, TEXT -> queryBuilder.append(String.format("'%s'", fieldValue));
+                    case INTEGER, BOOLEAN -> queryBuilder.append(String.format("%s", fieldValue));
                 }
             } else if (fieldAnnotation instanceof OneToOne || fieldAnnotation instanceof ManyToOne) {
                 IModel linkedObj = (IModel) field.get(model);
@@ -163,9 +202,12 @@ public class SQLGenerator {
 
             if (fieldAnnotation instanceof Column column) {
                 switch (column.type()) {
-                    case VARCHAR -> queryBuilder.append(String.format("%s='%s'", field.getName(), fieldValue));
-                    case INTEGER -> queryBuilder.append(String.format("%s=%s", field.getName(), fieldValue));
+                    case VARCHAR, TEXT -> queryBuilder.append(String.format("%s='%s'", field.getName(), fieldValue));
+                    case INTEGER, BOOLEAN -> queryBuilder.append(String.format("%s=%s", field.getName(), fieldValue));
                 }
+            } else if (fieldAnnotation instanceof OneToOne || fieldAnnotation instanceof ManyToOne) {
+                String fieldName = field.getName() + "_id";
+                queryBuilder.append(String.format("%s=%s", fieldName, fieldValue));
             }
 
             if (i + 1 < fields.size()) {

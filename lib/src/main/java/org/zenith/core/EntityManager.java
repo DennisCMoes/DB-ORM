@@ -26,8 +26,8 @@ public class EntityManager {
         databaseUtil.queryDb(query);
     }
 
-    public void createTable(String tableName, List<Field> fields) {
-        String query = SQLGenerator.generateCreateTable(tableName, fields);
+    public void alterTables(List<Class<? extends IModel>> classes) {
+        String query = SQLGenerator.generateAddForeignKey(classes);
         databaseUtil.queryDb(query);
     }
 
