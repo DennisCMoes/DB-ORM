@@ -3,7 +3,6 @@ package org.zenith.mapper;
 import org.zenith.annotation.relation.ManyToOne;
 import org.zenith.annotation.relation.OneToOne;
 import org.zenith.core.EntityManager;
-import org.zenith.model.UserTable;
 import org.zenith.model.interfaces.IModel;
 
 import java.lang.annotation.Annotation;
