@@ -1,7 +1,6 @@
 module org.zenith.lib {
-    requires java.sql;
+    requires org.xerial.sqlitejdbc;
 
-    exports org.zenith.core;
     exports org.zenith.model;
     exports org.zenith.model.interfaces;
 }
