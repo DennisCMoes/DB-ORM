@@ -1,13 +1,12 @@
-package org.zenith.mapper;
+package org.zenith.util.sql;
 
 import org.zenith.annotation.Column;
 import org.zenith.annotation.Id;
 import org.zenith.annotation.relation.ManyToOne;
-import org.zenith.annotation.relation.OneToMany;
 import org.zenith.annotation.relation.OneToOne;
 import org.zenith.enumeration.ColumnType;
 import org.zenith.model.interfaces.IModel;
-import org.zenith.util.ReflectionUtil;
+import org.zenith.util.reflection.ReflectionUtil;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -51,7 +50,7 @@ public class SQLGenerator {
      */
     private static String generateCreateTable(Class<? extends IModel> model) throws IllegalArgumentException {
         StringBuilder queryBuilder = new StringBuilder();
-        List<Field> fields = reflectionUtil.getFieldsOfModelWithoutTypes(model, List.of(OneToMany.class));
+        List<Field> fields = reflectionUtil.getFieldsOfModel(model);
 
         if (fields.isEmpty()) {
             throw new IllegalArgumentException("The model must contain fields with annotations");

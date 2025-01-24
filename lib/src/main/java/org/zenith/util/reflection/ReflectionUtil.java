@@ -1,4 +1,4 @@
-package org.zenith.util;
+package org.zenith.util.reflection;
 
 import org.zenith.annotation.Entity;
 import org.zenith.annotation.relation.ManyToOne;
