@@ -174,7 +174,7 @@ public class SQLGenerator {
         List<String> fieldsToQueryString = new ArrayList<>();
 
         for (Field field : fields) {
-            String fieldName = field.getName().toLowerCase();
+            String fieldName = field.getName();
             Object fieldValue = reflectionUtil.getValueOfField(model, fieldName);
 
             if (fieldValue == null) {
@@ -279,19 +279,19 @@ public class SQLGenerator {
         List<String> fieldsToUpdate = new ArrayList<>();
 
         for (Field field : fields) {
-            Object fieldValue = reflectionUtil.getValueOfField(model, field.getName().toLowerCase());
+            Object fieldValue = reflectionUtil.getValueOfField(model, field.getName());
             Annotation annotationOfField = field.getDeclaredAnnotations()[0];
 
             if (annotationOfField instanceof Column column) {
                 switch (column.type()) {
-                    case VARCHAR, TEXT -> fieldsToUpdate.add(String.format("%s='%s'", field.getName().toLowerCase(), fieldValue));
-                    case INTEGER, BOOLEAN -> fieldsToUpdate.add(String.format("%s=%s", field.getName().toLowerCase(), fieldValue));
+                    case VARCHAR, TEXT -> fieldsToUpdate.add(String.format("%s='%s'", field.getName(), fieldValue));
+                    case INTEGER, BOOLEAN -> fieldsToUpdate.add(String.format("%s=%s", field.getName(), fieldValue));
                 }
             } else if (annotationOfField instanceof OneToOne || annotationOfField instanceof ManyToOne) {
                 Field relatedField = reflectionUtil.getFieldByName((Class<? extends IModel>) field.getType(), "id");
                 Object relatedIdValue = relatedField.get(fieldValue);
 
-                fieldsToUpdate.add(String.format("%s=%s", field.getName().toLowerCase() + "_id", relatedIdValue));
+                fieldsToUpdate.add(String.format("%s=%s", field.getName() + "_id", relatedIdValue));
             }
         }
 

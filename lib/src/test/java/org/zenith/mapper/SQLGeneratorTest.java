@@ -20,7 +20,6 @@ class SQLGeneratorTest {
         public String name;
     }
 
-    // TODO: Add boolean field to test
     public static class TestModel2 implements IModel {
         @Id
         public int id;
@@ -28,6 +27,8 @@ class SQLGeneratorTest {
         public int age;
         @Column(type = ColumnType.TEXT)
         public double salary;
+        @Column(type = ColumnType.BOOLEAN)
+        public boolean isWorking;
 
         @OneToOne
         public TestModel1 parent;
@@ -55,7 +56,7 @@ class SQLGeneratorTest {
 
         String expected = """
                 CREATE TABLE testmodel1 (id SERIAL PRIMARY KEY, name VARCHAR (64));
-                CREATE TABLE testmodel2 (id SERIAL PRIMARY KEY, age INTEGER (64), salary TEXT, parent_id INT);""";
+                CREATE TABLE testmodel2 (id SERIAL PRIMARY KEY, age INTEGER (64), salary TEXT, isWorking BOOLEAN (64), parent_id INT);""";
 
         assertEquals(expected, result);
     }
@@ -179,7 +180,7 @@ class SQLGeneratorTest {
 
         String result = SQLGenerator.generateInsert(model2);
         String expected = """
-                INSERT INTO testmodel2 (id, age, salary, parent_id) VALUES (0, 10, '10.0', 1) RETURNING *;""";
+                INSERT INTO testmodel2 (id, age, salary, isWorking, parent_id) VALUES (0, 10, '10.0', false, 1) RETURNING *;""";
 
         assertEquals(expected, result);
     }
@@ -192,7 +193,7 @@ class SQLGeneratorTest {
 
         String result = SQLGenerator.generateInsert(model);
         String expected = """
-                INSERT INTO testmodel2 (id, age, salary, parent_id) VALUES (0, 10, '12.0', NULL) RETURNING *;""";
+                INSERT INTO testmodel2 (id, age, salary, isWorking, parent_id) VALUES (0, 10, '12.0', false, NULL) RETURNING *;""";
 
         assertEquals(expected, result);
     }
@@ -319,9 +320,10 @@ class SQLGeneratorTest {
         model2.id = 1;
         model2.age = 10;
         model2.parent = model1;
+        model2.isWorking = true;
 
         String result = SQLGenerator.generateUpdate(model2);
-        String expected = "UPDATE testmodel2 SET age=10, salary='0.0', parent_id=1 WHERE id=1 RETURNING *;";
+        String expected = "UPDATE testmodel2 SET age=10, salary='0.0', isWorking=true, parent_id=1 WHERE id=1 RETURNING *;";
 
         assertEquals(expected, result);
     }
