@@ -3,7 +3,7 @@ package org.zenith.util.database;
 import java.sql.*;
 
 public class SQLiteDatabase {
-    private String DATABASE_URL = "jdbc:sqlite::memory:";
+    private final String DATABASE_URL = "jdbc:sqlite::memory:";
 
     private static SQLiteDatabase instance;
     private Connection connection;
