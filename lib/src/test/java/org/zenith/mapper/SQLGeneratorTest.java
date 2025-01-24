@@ -6,6 +6,7 @@ import org.zenith.annotation.Id;
 import org.zenith.annotation.relation.OneToOne;
 import org.zenith.enumeration.ColumnType;
 import org.zenith.model.interfaces.IModel;
+import org.zenith.util.sql.SQLGenerator;
 
 import java.util.ArrayList;
 import java.util.List;
