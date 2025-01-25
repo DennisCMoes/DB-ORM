@@ -1,8 +1,10 @@
 package org.zenith.util;
 
+import org.zenith.annotation.Column;
 import org.zenith.annotation.Entity;
 import org.zenith.annotation.relation.ManyToOne;
 import org.zenith.annotation.relation.OneToOne;
+import org.zenith.enumeration.ColumnType;
 import org.zenith.model.interfaces.IModel;
 
 import java.io.File;
@@ -11,10 +13,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 public class ReflectionUtil {
     /**
@@ -57,14 +57,23 @@ public class ReflectionUtil {
             }
 
             field.setAccessible(true);
-
-            String columnName = field.getName().toLowerCase();
+            Column columnAnnotation = field.getAnnotation(Column.class);
+            String columnName = field.getName();
             Object fieldValue = resultSet.getObject(columnName);
-
-            System.out.println("Column: " + columnName + " Value: " + fieldValue + " Type: " + (fieldValue != null ? fieldValue.getClass() : "null"));
 
             if (fieldValue == null) {
                 continue;
+            }
+
+            if (columnAnnotation != null) {
+                try {
+                    switch (columnAnnotation.type()) {
+                        case ColumnType.DATETIME -> fieldValue = (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")).parse((String) fieldValue);
+                        case ColumnType.BOOLEAN -> fieldValue = (int)fieldValue != 0;
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             }
 
             field.set(model, fieldValue);

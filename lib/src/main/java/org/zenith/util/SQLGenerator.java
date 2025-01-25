@@ -10,6 +10,7 @@ import org.zenith.model.interfaces.IModel;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -69,11 +70,10 @@ public class SQLGenerator {
                 case OneToOne ignored -> queryBuilder.append(String.format("%s INT", fieldName + "_id"));
                 case ManyToOne ignored -> queryBuilder.append(String.format("%s INT", fieldName + "_id"));
                 case Column column -> {
-                    // TODO: Check if this should be annotated like this and we can't make one size fits all
-                    if (column.type().equals(ColumnType.TEXT)) {
-                        queryBuilder.append(String.format("%s %s", fieldName, column.type()));
-                    } else {
-                        queryBuilder.append(String.format("%s %s (%d)", fieldName, column.type(), column.size()));
+                    switch (column.type()) {
+                        case BOOLEAN, INTEGER -> queryBuilder.append(String.format("%s INTEGER", fieldName));
+                        case TEXT, DATETIME -> queryBuilder.append(String.format("%s TEXT", fieldName));
+                        case VARCHAR -> queryBuilder.append(String.format("%s %s (%d)", fieldName, column.type(), column.size()));
                     }
                 }
                 default -> throw new IllegalStateException("Unexpected value: " + annotationOfField);
@@ -186,7 +186,9 @@ public class SQLGenerator {
             if (annotationOfField instanceof Column column) {
                 switch (column.type()) {
                     case VARCHAR, TEXT -> fieldsToQueryString.add(String.format("'%s'", fieldValue));
-                    case INTEGER, BOOLEAN -> fieldsToQueryString.add(String.format("%s", fieldValue));
+                    case INTEGER -> fieldsToQueryString.add(String.format("%s", fieldValue));
+                    case BOOLEAN -> fieldsToQueryString.add(String.format("%d", ((boolean) fieldValue) ? 1 : 0));
+                    case DATETIME -> fieldsToQueryString.add(String.format("datetime(%d, 'unixepoch')", ((Date)fieldValue).getTime() / 1000));
                 }
             } else if (annotationOfField instanceof Id) {
                 fieldsToQueryString.add(String.format("%d", (int)fieldValue));
@@ -206,7 +208,7 @@ public class SQLGenerator {
     /**
      * Generates an SQL SELECT query for the given model instance with specified fields to return and query
      *
-     * @param model The model instance for which the SELECT query is generated
+     * @param modelClass The model instance for which the SELECT query is generated
      * @param fieldsToReturn The list of fields to include in the SELECT clause. If null or empty, all fields are included
      * @param fieldsToQuery The list of fields to include in the WHERE clause
      * @return A string containing the SQL SELECT query
@@ -245,6 +247,7 @@ public class SQLGenerator {
                     switch (column.type()) {
                         case VARCHAR, TEXT -> conditions.add(String.format("%s='%s'", fieldName, fieldValue));
                         case INTEGER, BOOLEAN -> conditions.add(String.format("%s=%s", fieldName, fieldValue));
+                        case DATETIME -> conditions.add(String.format("%s=datetime('%s')", fieldName, ((Date)fieldValue).getTime()));
                     }
                 } else if (field.isAnnotationPresent(Id.class)) {
                     conditions.add(String.format("%s=%s", fieldName, (int) fieldValue));
@@ -284,6 +287,7 @@ public class SQLGenerator {
                 switch (column.type()) {
                     case VARCHAR, TEXT -> fieldsToUpdate.add(String.format("%s='%s'", field.getName(), fieldValue));
                     case INTEGER, BOOLEAN -> fieldsToUpdate.add(String.format("%s=%s", field.getName(), fieldValue));
+                    case DATETIME -> fieldsToUpdate.add(String.format("%s=datetime('%s')", field.getName(), ((Date)fieldValue).getTime()));
                 }
             } else if (annotationOfField instanceof OneToOne || annotationOfField instanceof ManyToOne) {
                 Field relatedField = reflectionUtil.getFieldByName((Class<? extends IModel>) field.getType(), "id");

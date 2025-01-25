@@ -71,7 +71,6 @@ public class SQLiteDatabase {
     public ResultSet executeQueryWithResult(String query) throws SQLException {
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery(query);
-
         return resultSet;
     }
 

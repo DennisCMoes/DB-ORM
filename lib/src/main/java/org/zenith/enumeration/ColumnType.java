@@ -4,5 +4,6 @@ public enum ColumnType {
     VARCHAR,
     TEXT,
     BOOLEAN,
-    INTEGER;
+    INTEGER,
+    DATETIME;
 }
