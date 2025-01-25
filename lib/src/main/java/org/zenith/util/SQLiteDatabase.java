@@ -1,4 +1,4 @@
-package org.zenith.util.database;
+package org.zenith.util;
 
 import java.sql.*;
 

@@ -45,17 +45,23 @@ public class ReflectionUtil {
      * @throws NoSuchMethodException If the no-argument constructor of the model class is not found
      * @throws InvocationTargetException If there is an exception thrown by the constructor
      */
-    public static IModel mapToModel(ResultSet resultSet, Class<? extends IModel> modelClass)
+    public static <T extends IModel> T mapToModel(ResultSet resultSet, Class<T> modelClass)
             throws SQLException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
 
-        IModel model = modelClass.getDeclaredConstructor().newInstance();
-        Field[] fields = modelClass.getDeclaredFields();
+        T model = modelClass.getDeclaredConstructor().newInstance();
+        Field[] fields = modelClass.getFields();
 
         for (Field field : fields) {
+            if (field.getName().equals("<init>")) {
+                continue;
+            }
+
             field.setAccessible(true);
 
             String columnName = field.getName().toLowerCase();
             Object fieldValue = resultSet.getObject(columnName);
+
+            System.out.println("Column: " + columnName + " Value: " + fieldValue + " Type: " + (fieldValue != null ? fieldValue.getClass() : "null"));
 
             if (fieldValue == null) {
                 continue;
@@ -101,6 +107,8 @@ public class ReflectionUtil {
      * @return A list of {@link Field} objects representing the fields of the model class.
      */
     public List<Field> getFieldsOfModel(Class<? extends IModel> model) {
+        // TODO: If the model does not have @Entity annotated return exception
+
         return Arrays.stream(model.getFields()).toList();
     }
 
@@ -112,6 +120,7 @@ public class ReflectionUtil {
      * @return A list of {@link Field} objects representing the fields of the model class.
      */
     public List<Field> getFieldsOfModelWithoutTypes(Class<? extends IModel> model, List<Class<? extends Annotation>> annotations) {
+        // TODO: If the model does not have @Entity annotated return exception
         return getFieldsOfModel(model)
                 .stream()
                 .filter(field -> annotations.stream().noneMatch(field::isAnnotationPresent))
@@ -126,6 +135,7 @@ public class ReflectionUtil {
      * @return A list of {@link Field} objects representing the fields of the model class.
      */
     public List<Field> getFieldsOfModelWithTypes(Class<? extends IModel> model, List<Class<? extends Annotation>> annotations) {
+        // TODO: If the model does not have @Entity annotated return exception
         return getFieldsOfModel(model)
                 .stream()
                 .filter(field -> annotations.stream().anyMatch(field::isAnnotationPresent))
