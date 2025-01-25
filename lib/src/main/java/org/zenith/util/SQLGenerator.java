@@ -6,7 +6,6 @@ import org.zenith.annotation.relation.ManyToOne;
 import org.zenith.annotation.relation.OneToOne;
 import org.zenith.enumeration.ColumnType;
 import org.zenith.model.interfaces.IModel;
-import org.zenith.util.reflection.ReflectionUtil;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;

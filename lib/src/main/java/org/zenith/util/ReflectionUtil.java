@@ -1,4 +1,4 @@
-package org.zenith.util.reflection;
+package org.zenith.util;
 
 import org.zenith.annotation.Entity;
 import org.zenith.annotation.relation.ManyToOne;
@@ -8,6 +8,9 @@ import org.zenith.model.interfaces.IModel;
 import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,6 +31,40 @@ public class ReflectionUtil {
         } catch (ClassNotFoundException ex) {
             return null;
         }
+    }
+
+    /**
+     * Maps the values from a {@link ResultSet} to an instance of the specified model class.
+     *
+     * @param resultSet The {@link ResultSet} containing the data to map
+     * @param modelClass The {@link Class} f the model to which the data should be mapped to
+     * @return An instance of the model class with fields populated fom the {@link ResultSet}
+     * @throws SQLException If there is an error accessing the {@link ResultSet}
+     * @throws IllegalAccessException If the field in the model class cannot be accessed
+     * @throws InstantiationException If the model class cannot be instantiated
+     * @throws NoSuchMethodException If the no-argument constructor of the model class is not found
+     * @throws InvocationTargetException If there is an exception thrown by the constructor
+     */
+    public static IModel mapToModel(ResultSet resultSet, Class<? extends IModel> modelClass)
+            throws SQLException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
+
+        IModel model = modelClass.getDeclaredConstructor().newInstance();
+        Field[] fields = modelClass.getDeclaredFields();
+
+        for (Field field : fields) {
+            field.setAccessible(true);
+
+            String columnName = field.getName().toLowerCase();
+            Object fieldValue = resultSet.getObject(columnName);
+
+            if (fieldValue == null) {
+                continue;
+            }
+
+            field.set(model, fieldValue);
+        }
+
+        return model;
     }
 
     /**
@@ -108,10 +145,24 @@ public class ReflectionUtil {
         return getFieldByName(model.getClass(), fieldName).get(model);
     }
 
+    /**
+     * Retrieves a {@link Field} from the specified model class by its name
+     *
+     * @param model The {@link Class} of the model from which to retrieve the field. Must implement {@link IModel}
+     * @param fieldName The name of the field to retrieve
+     * @return The {@link Field} object corresponding to the specified name
+     * @throws NoSuchFieldException If a field with the specified name is not found in the class
+     */
     public Field getFieldByName(Class<? extends IModel> model, String fieldName) throws NoSuchFieldException {
         return model.getDeclaredField(fieldName);
     }
 
+    /**
+     * Returns the database column name corresponding to the given {@link Field}
+     *
+     * @param field The {@link Field} for which the database column name s to be determined
+     * @return The database column name as a {@link String}
+     */
     public String getFieldName(Field field) {
         String fieldName = field.getName();
 
