@@ -1,4 +1,4 @@
-package org.zenith.mapper;
+package org.zenith.util;
 
 import org.junit.jupiter.api.Test;
 import org.zenith.annotation.Column;
@@ -6,10 +6,8 @@ import org.zenith.annotation.Id;
 import org.zenith.annotation.relation.OneToOne;
 import org.zenith.enumeration.ColumnType;
 import org.zenith.model.interfaces.IModel;
-import org.zenith.util.sql.SQLGenerator;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -205,76 +203,59 @@ class SQLGeneratorTest {
     }
 
     @Test
-    void shouldGenerateSelectAllColumnsWithoutFilters() throws NoSuchFieldException, IllegalAccessException {
-        TestModel1 model = new TestModel1();
-
-        String result = SQLGenerator.generateSelect(model, null, null);
+    void shouldGenerateSelectAllColumnsWithoutFilters() throws NoSuchFieldException {
+        String result = SQLGenerator.generateSelect(TestModel1.class, null, null);
         String expected = "SELECT * FROM testmodel1;";
 
         assertEquals(expected, result);
     }
 
     @Test
-    void shouldGenerateSelectSpecificColumnsWithoutFilters() throws NoSuchFieldException, IllegalAccessException {
-        TestModel1 model = new TestModel1();
-
+    void shouldGenerateSelectSpecificColumnsWithoutFilters() throws NoSuchFieldException {
         List<String> fieldsToReturn = List.of("id", "name");
 
-        String result = SQLGenerator.generateSelect(model, fieldsToReturn, null);
+        String result = SQLGenerator.generateSelect(TestModel1.class, fieldsToReturn, null);
         String expected = "SELECT id, name FROM testmodel1;";
 
         assertEquals(expected, result);
     }
 
     @Test
-    void shouldGenerateSelectAllColumnsWithSingleFilter() throws NoSuchFieldException, IllegalAccessException {
-        TestModel1 model = new TestModel1();
-        model.id = 1;
+    void shouldGenerateSelectAllColumnsWithSingleFilter() throws NoSuchFieldException {
+        Map<String, Object> fieldsToQuery = Map.of("id", 1);
 
-        List<String> fieldsToQuery = List.of("id");
-
-        String result = SQLGenerator.generateSelect(model, null, fieldsToQuery);
+        String result = SQLGenerator.generateSelect(TestModel1.class, null, fieldsToQuery);
         String expected = "SELECT * FROM testmodel1 WHERE id=1;";
 
         assertEquals(expected, result);
     }
 
     @Test
-    void shouldGenerateSelectSpecificColumnsWithMultipleFilters() throws NoSuchFieldException, IllegalAccessException {
-        TestModel1 model = new TestModel1();
-        model.id = 1;
-        model.name = "Hello";
-
+    void shouldGenerateSelectSpecificColumnsWithMultipleFilters() throws NoSuchFieldException {
         List<String> fieldsToReturn = List.of("id", "name");
-        List<String> fieldsToQuery = List.of("id", "name");
+        Map<String, Object> fieldsToQuery = Map.of("id", 1, "name", "Hello");
 
-        String result = SQLGenerator.generateSelect(model, fieldsToReturn, fieldsToQuery);
-        String expected = "SELECT id, name FROM testmodel1 WHERE id=1 AND name='Hello';";
-
-        assertEquals(expected, result);
-    }
-
-    @Test
-    void shouldGenerateSelectAllColumnsWithNullFieldValue() throws NoSuchFieldException, IllegalAccessException {
-        TestModel1 model = new TestModel1();
-        model.id = 1;
-        model.name = null;
-
-        List<String> fieldsToQuery = List.of("id", "name");
-
-        String result = SQLGenerator.generateSelect(model, null, fieldsToQuery);
-        String expected = "SELECT * FROM testmodel1 WHERE id=1 AND name='null';";
+        String result = SQLGenerator.generateSelect(TestModel1.class, fieldsToReturn, fieldsToQuery);
+        String expected = "SELECT id, name FROM testmodel1 WHERE name='Hello' AND id=1;";
 
         assertEquals(expected, result);
     }
 
     @Test
-    void shouldGenerateSelectAllColumnsWithNoFilters() throws NoSuchFieldException, IllegalAccessException {
-        TestModel1 model = new TestModel1();
+    void shouldGenerateSelectAllColumnsWithNullFieldValue() throws NoSuchFieldException {
+        Map<String, Object> fieldsToQuery = new HashMap<>();
+        fieldsToQuery.put("name", null);
+        fieldsToQuery.put("id", 1);
 
-        List<String> fieldsToQuery = new ArrayList<>();
+        String result = SQLGenerator.generateSelect(TestModel1.class, null, fieldsToQuery);
+        String expected = "SELECT * FROM testmodel1 WHERE name='null' AND id=1;";
 
-        String result = SQLGenerator.generateSelect(model, null, fieldsToQuery);
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void shouldGenerateSelectAllColumnsWithNoFilters() throws NoSuchFieldException {
+        String result = SQLGenerator.generateSelect(TestModel1.class, null, new HashMap<>());
         String expected = "SELECT * FROM testmodel1;";
 
         assertEquals(expected, result);
@@ -282,8 +263,8 @@ class SQLGeneratorTest {
 
     @Test
     void shouldThrowExceptionWhenFieldAnnotationsAreMissing() {
-        assertThrows(NoSuchFieldException.class, () -> {
-            SQLGenerator.generateSelect(new EmptyModel(), List.of("id"), List.of("id"));
+        assertThrows(NullPointerException.class, () -> {
+            SQLGenerator.generateSelect(EmptyModel.class, List.of("id"), Map.of("id", null));
         });
     }
 

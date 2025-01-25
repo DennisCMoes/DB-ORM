@@ -1,4 +1,4 @@
-package org.zenith.util.sql;
+package org.zenith.util;
 
 import org.zenith.annotation.Column;
 import org.zenith.annotation.Id;
@@ -12,6 +12,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -213,48 +214,47 @@ public class SQLGenerator {
      * @throws NoSuchFieldException If a specified field is not found
      * @throws IllegalAccessException If a field cannot be accessed
      */
-    public static String generateSelect(IModel model, List<String> fieldsToReturn, List<String> fieldsToQuery) throws NoSuchFieldException, IllegalAccessException {
+    public static String generateSelect(Class<? extends IModel> modelClass, List<String> fieldsToReturn, Map<String, Object> fieldsToQuery)
+            throws NoSuchFieldException {
+
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append("SELECT ");
 
         if (fieldsToReturn == null || fieldsToReturn.isEmpty()) {
             queryBuilder.append("*");
         } else {
-            queryBuilder.append(fieldsToReturn.stream()
-                    .collect(Collectors.joining(", ")));
+            queryBuilder.append(String.join(", ", fieldsToReturn));
         }
 
         // FROM clause
-        queryBuilder.append(String.format(" FROM %s", model.getClass().getSimpleName().toLowerCase()));
+        queryBuilder.append(String.format(" FROM %s", modelClass.getSimpleName().toLowerCase()));
 
         // Add WHERE clause
         if (fieldsToQuery != null && !fieldsToQuery.isEmpty()) {
             queryBuilder.append(" WHERE ");
-            List<Field> fields = new ArrayList<>();
+            List<String> conditions = new ArrayList<>();
 
-            for (String fieldName : fieldsToQuery) {
-                fields.add(reflectionUtil.getFieldByName(model.getClass(), fieldName));
-            }
+            for (Map.Entry<String, Object> entry : fieldsToQuery.entrySet()) {
+                String fieldName = entry.getKey();
+                Object fieldValue = entry.getValue();
 
-            List<String> fieldsToQueryString = new ArrayList<>();
+                Field field = modelClass.getDeclaredField(fieldName);
 
-            for (Field field : fields) {
-                Object fieldValue = reflectionUtil.getValueOfField(model, field.getName());
-                Annotation annotationOfField = field.getDeclaredAnnotations()[0];
+                if (field.isAnnotationPresent(Column.class)) {
+                    Column column = field.getAnnotation(Column.class);
 
-                if (annotationOfField instanceof Column column) {
                     switch (column.type()) {
-                        case VARCHAR, TEXT -> fieldsToQueryString.add(String.format("%s='%s'", field.getName(), fieldValue));
-                        case INTEGER, BOOLEAN -> fieldsToQueryString.add(String.format("%s=%s", field.getName(), fieldValue));
+                        case VARCHAR, TEXT -> conditions.add(String.format("%s='%s'", fieldName, fieldValue));
+                        case INTEGER, BOOLEAN -> conditions.add(String.format("%s=%s", fieldName, fieldValue));
                     }
-                } else if (annotationOfField instanceof Id id) {
-                    fieldsToQueryString.add(String.format("%s=%d", field.getName(), (int)fieldValue));
-                } else if (annotationOfField instanceof OneToOne || annotationOfField instanceof ManyToOne) {
-                    fieldsToQueryString.add(String.format("%s=%d", field.getName() + "_id", (int)fieldValue));
+                } else if (field.isAnnotationPresent(Id.class)) {
+                    conditions.add(String.format("%s=%s", fieldName, (int) fieldValue));
+                } else if (field.isAnnotationPresent(OneToOne.class) || field.isAnnotationPresent(ManyToOne.class)) {
+                    conditions.add(String.format("%s=%d", fieldName + "_id", (int)fieldValue));
                 }
             }
 
-            queryBuilder.append(String.join(" AND ", fieldsToQueryString));
+            queryBuilder.append(String.join(" AND ", conditions));
         }
 
         queryBuilder.append(";");
