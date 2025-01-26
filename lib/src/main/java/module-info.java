@@ -5,4 +5,5 @@ module org.zenith.lib {
     exports org.zenith.annotation;
     exports org.zenith.model.interfaces;
     exports org.zenith.enumeration;
+    exports org.zenith.annotation.relation;
 }
