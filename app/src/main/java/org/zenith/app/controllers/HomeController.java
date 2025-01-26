@@ -1,23 +1,15 @@
 package org.zenith.app.controllers;
 
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
+import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
-import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
-import javafx.scene.control.MenuItem;
 import javafx.scene.input.MouseButton;
 import javafx.scene.text.Text;
+import org.zenith.app.services.TodoService;
 import org.zenith.models.TodoItem;
-import org.zenith.util.EntityManager;
-import org.zenith.util.SQLGenerator;
-import org.zenith.util.SQLiteDatabase;
-
-import java.util.List;
 
 public class HomeController extends BaseController {
-    private EntityManager entityManager;
-    private List<TodoItem> todos;
+    private TodoService todoService;
 
     @FXML
     public Text remainingTasksLbl;
@@ -27,18 +19,15 @@ public class HomeController extends BaseController {
 
     @FXML
     public void initialize() {
-        this.entityManager = new EntityManager();
+        this.todoService = TodoService.getInstance();
+        this.todoService.loadTodos();
 
-        try {
-            todos = entityManager.list(TodoItem.class);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+        remainingTasksLbl.textProperty().bind(
+                Bindings.format("Remaining Tasks: %d",
+                        TodoService.getInstance().todosSizeProperty())
+        );
 
-        remainingTasksLbl.setText(String.format("Remaining Tasks: %d", todos.size()));
-
-        ObservableList<TodoItem> observableTodos = FXCollections.observableList(todos);
-        todoListView.setItems(observableTodos);
+        todoListView.setItems(todoService.getTodos());
 
         todoListView.setOnMouseClicked(event -> {
             if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
