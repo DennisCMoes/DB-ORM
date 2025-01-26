@@ -11,7 +11,16 @@ public class SQLiteDatabase {
     private SQLiteDatabase() {
         try {
             Class.forName("org.sqlite.JDBC");
+
             this.connection = DriverManager.getConnection(DATABASE_URL);
+
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("PRAGMA journal_mode = WAL;");
+                statement.execute("PRAGMA locking_mode = EXCLUSIVE;");
+                statement.execute("PRAGMA shared_cache = TRUE;");
+                statement.execute("PRAGMA busy_timeout = 5000;");
+            }
+
             System.out.println("In-memory SQLite database created");
         } catch (SQLException | ClassNotFoundException ex) {
             ex.printStackTrace();
@@ -68,8 +77,8 @@ public class SQLiteDatabase {
      * @param query The SQL query to be executed.
      * @return A {@link ResultSet} containing the result of the query, or `null` if an error occurred.
      */
-    public ResultSet executeQueryWithResult(String query) throws SQLException {
-        Statement statement = connection.createStatement();
+    public synchronized ResultSet executeQueryWithResult(String query) throws SQLException {
+        Statement statement =  connection.createStatement();
         ResultSet resultSet = statement.executeQuery(query);
         return resultSet;
     }

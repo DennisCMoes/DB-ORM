@@ -3,6 +3,7 @@ package org.zenith.util;
 import org.zenith.annotation.Column;
 import org.zenith.annotation.Entity;
 import org.zenith.annotation.relation.ManyToOne;
+import org.zenith.annotation.relation.OneToMany;
 import org.zenith.annotation.relation.OneToOne;
 import org.zenith.enumeration.ColumnType;
 import org.zenith.model.interfaces.IModel;
@@ -11,6 +12,8 @@ import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
@@ -46,37 +49,106 @@ public class ReflectionUtil {
      * @throws InvocationTargetException If there is an exception thrown by the constructor
      */
     public static <T extends IModel> T mapToModel(ResultSet resultSet, Class<T> modelClass)
-            throws SQLException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
+            throws SQLException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
+        return mapToModel(resultSet, modelClass, null);
+    }
+
+    public static <T extends IModel> T mapToModel(ResultSet resultSet, Class<T> modelClass, T parentModel)
+            throws SQLException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
 
         T model = modelClass.getDeclaredConstructor().newInstance();
-        Field[] fields = modelClass.getFields();
+        String modelName = model.getClass().getSimpleName();
+        Field[] fields = modelClass.getDeclaredFields();
 
         for (Field field : fields) {
-            if (field.getName().equals("<init>")) {
+            String fieldName = field.getName();
+
+            if (fieldName.equals("<init>")) {
                 continue;
+            }
+
+            if (fieldName.endsWith("_id")) {
+                fieldName = fieldName.replace("_id", "");
             }
 
             field.setAccessible(true);
+
             Column columnAnnotation = field.getAnnotation(Column.class);
-            String columnName = field.getName();
-            Object fieldValue = resultSet.getObject(columnName);
+            OneToMany oneToManyAnnotation = field.getAnnotation(OneToMany.class);
+            ManyToOne manyToOneAnnotation = field.getAnnotation(ManyToOne.class);
 
-            if (fieldValue == null) {
-                continue;
-            }
+            if (manyToOneAnnotation != null) { // Child
+                field.set(model, parentModel);
+            } else if (oneToManyAnnotation != null) {
+                String relatedFieldName = modelName.substring(0, 1).toLowerCase() + modelName.substring(1, modelName.length());
 
-            if (columnAnnotation != null) {
-                try {
-                    switch (columnAnnotation.type()) {
-                        case ColumnType.DATETIME -> fieldValue = (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")).parse((String) fieldValue);
-                        case ColumnType.BOOLEAN -> fieldValue = (int)fieldValue != 0;
+                if (List.class.isAssignableFrom(field.getType())) {
+                    Type genericType = field.getGenericType();
+
+                    if (genericType instanceof ParameterizedType parameterizedType) {
+                        Type actualTypeArgument = parameterizedType.getActualTypeArguments()[0];
+
+                        if (actualTypeArgument instanceof Class<?>) {
+                            ReflectionUtil reflectionUtil = new ReflectionUtil();
+                            Class<?> actualClass = (Class<?>) actualTypeArgument;
+                            int id = (int)reflectionUtil.getValueOfField(model, "id");
+
+                            String countQuery = SQLGenerator.generateCountSelect(
+                                    (Class<? extends IModel>) actualClass,
+                                    Map.of(relatedFieldName, id));
+
+                            List<IModel> linkedSubClasses = new ArrayList<>();
+
+                            try {
+                                ResultSet resultSet1 = SQLiteDatabase.getInstance().executeQueryWithResult(countQuery);
+
+                                if (resultSet1.next()) {
+                                    int amount = resultSet1.getInt("COUNT(*)");
+
+                                    if (amount > 0) {
+                                        String selectQuery = SQLGenerator.generateSelect(
+                                                (Class<? extends IModel>) actualClass,
+                                                null,
+                                                Map.of(relatedFieldName, id)
+                                        );
+
+                                        ResultSet relatedModelsResultSet = SQLiteDatabase.getInstance().executeQueryWithResult(selectQuery);
+
+                                        // Process related models only if there are results
+                                        while (relatedModelsResultSet.next()) {
+                                            IModel relatedModel = mapToModel(relatedModelsResultSet, (Class<T>) actualClass, model);
+                                            System.out.println(relatedModel);
+                                            linkedSubClasses.add(relatedModel);
+                                        }
+                                    }
+                                }
+                            } catch (SQLException ex) {
+                                ex.printStackTrace();
+                            }
+
+                            field.set(model, linkedSubClasses);
+                        }
                     }
-                } catch (Exception ex) {
-                    ex.printStackTrace();
+                }
+            } else {
+                String columnName = fieldName;
+                Object fieldValue = resultSet.getObject(columnName);
+
+                if (columnAnnotation != null) {
+                    try {
+                        switch (columnAnnotation.type()) {
+                            case ColumnType.DATETIME -> fieldValue = (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")).parse((String) fieldValue);
+                            case ColumnType.BOOLEAN -> fieldValue = (int) fieldValue != 0;
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+
+                if (fieldValue != null) {
+                    field.set(model, fieldValue);
                 }
             }
-
-            field.set(model, fieldValue);
         }
 
         return model;

@@ -3,8 +3,8 @@ package org.zenith.util;
 import org.zenith.annotation.Column;
 import org.zenith.annotation.Id;
 import org.zenith.annotation.relation.ManyToOne;
+import org.zenith.annotation.relation.OneToMany;
 import org.zenith.annotation.relation.OneToOne;
-import org.zenith.enumeration.ColumnType;
 import org.zenith.model.interfaces.IModel;
 
 import java.lang.annotation.Annotation;
@@ -39,7 +39,10 @@ public class SQLGenerator {
             queryBuilder.append(String.format("ALTER TABLE %s ADD FOREIGN KEY (%s) REFERENCES %s;", model.getSimpleName().toLowerCase(), fieldName, referencedClassName));
         }
 
-        return queryBuilder.toString();
+        String query = queryBuilder.toString();
+
+        Logger.info(query);
+        return query;
     }
 
     /**
@@ -58,34 +61,43 @@ public class SQLGenerator {
         }
 
         queryBuilder.append(String.format("CREATE TABLE %s (", model.getSimpleName().toLowerCase()));
+        List<String> conditions = new ArrayList<>();
 
         for (int i = 0; i < fields.size(); i++) {
             Field field = fields.get(i);
             String fieldName = field.getName();
+            String fieldTableName = field.getType().getSimpleName().toLowerCase();
 
             Annotation annotationOfField = field.getDeclaredAnnotations()[0];
 
             switch (annotationOfField) {
-                case Id ignored -> queryBuilder.append(String.format("%s SERIAL PRIMARY KEY", fieldName));
-                case OneToOne ignored -> queryBuilder.append(String.format("%s INT", fieldName + "_id"));
-                case ManyToOne ignored -> queryBuilder.append(String.format("%s INT", fieldName + "_id"));
+                case Id ignored -> conditions.add(String.format("%s SERIAL PRIMARY KEY", fieldName));
+                case OneToOne ignored -> {
+                    conditions.add(String.format("%s INT", fieldName + "_d"));
+                    conditions.add(String.format("FOREIGN KEY (%s_id) REFERENCES %s(id)", fieldName, fieldTableName));
+                }
+                case ManyToOne ignored -> { // Child
+                    conditions.add(String.format("%s INT", fieldName + "_id"));
+                    conditions.add(String.format("FOREIGN KEY (%s_id) REFERENCES %s(id)", fieldName, fieldTableName));
+                }
+                case OneToMany ignored -> { } // Parent
                 case Column column -> {
                     switch (column.type()) {
-                        case BOOLEAN, INTEGER -> queryBuilder.append(String.format("%s INTEGER", fieldName));
-                        case TEXT, DATETIME -> queryBuilder.append(String.format("%s TEXT", fieldName));
-                        case VARCHAR -> queryBuilder.append(String.format("%s %s (%d)", fieldName, column.type(), column.size()));
+                        case BOOLEAN, INTEGER -> conditions.add(String.format("%s INTEGER", fieldName));
+                        case TEXT, DATETIME -> conditions.add(String.format("%s TEXT", fieldName));
+                        case VARCHAR -> conditions.add(String.format("%s %s (%d)", fieldName, column.type(), column.size()));
                     }
                 }
                 default -> throw new IllegalStateException("Unexpected value: " + annotationOfField);
             }
-
-            if (i + 1 < fields.size()) {
-                queryBuilder.append(", ");
-            }
         }
 
-        queryBuilder.append(");");
-        return queryBuilder.toString();
+        queryBuilder.append(String.join(", ", conditions)).append(");");
+
+        String query = queryBuilder.toString();
+        Logger.info(query);
+
+        return query;
     }
 
     /**
@@ -160,7 +172,7 @@ public class SQLGenerator {
      */
     public static String generateInsert(IModel model) throws IllegalArgumentException, NoSuchFieldException, IllegalAccessException {
         StringBuilder queryBuilder = new StringBuilder();
-        List<Field> fields = reflectionUtil.getFieldsOfModel(model.getClass());
+        List<Field> fields = reflectionUtil.getFieldsOfModelWithoutTypes(model.getClass(), List.of(OneToMany.class));
 
         if (fields == null || fields.isEmpty()) {
             throw new IllegalArgumentException("The model must contain annotated fields");
@@ -192,7 +204,7 @@ public class SQLGenerator {
                 }
             } else if (annotationOfField instanceof Id) {
                 fieldsToQueryString.add(String.format("%d", (int)fieldValue));
-            } else if (annotationOfField instanceof OneToOne || annotationOfField instanceof ManyToOne) {
+            } else if (annotationOfField instanceof OneToOne || annotationOfField instanceof ManyToOne) { // ManyToOne -> Child
                 Field relatedField = reflectionUtil.getFieldByName((Class<? extends IModel>) field.getType(), "id");
                 Object relatedIdValue = relatedField.get(fieldValue);
 
@@ -202,7 +214,11 @@ public class SQLGenerator {
 
         queryBuilder.append(String.join(", ", fieldsToQueryString));
         queryBuilder.append(") RETURNING *;");
-        return queryBuilder.toString();
+
+        String query = queryBuilder.toString();
+        Logger.info(query);
+
+        return query;
     }
 
     /**
@@ -260,7 +276,54 @@ public class SQLGenerator {
         }
 
         queryBuilder.append(";");
-        return queryBuilder.toString();
+
+        String query = queryBuilder.toString();
+        Logger.info(query);
+
+        return query;
+    }
+
+    public static String generateCountSelect(Class<? extends IModel> modelClass, Map<String, Object> fieldsToQuery)
+            throws NoSuchFieldException {
+
+        StringBuilder queryBuilder = new StringBuilder();
+        queryBuilder.append(String.format("SELECT COUNT(*) FROM %s", modelClass.getSimpleName().toLowerCase()));
+
+        // WHERE clause
+        if (fieldsToQuery != null && !fieldsToQuery.isEmpty()) {
+            queryBuilder.append(" WHERE ");
+            List<String> conditions = new ArrayList<>();
+
+            for (Map.Entry<String, Object> entry : fieldsToQuery.entrySet()) {
+                String fieldName = entry.getKey();
+                Object fieldValue = entry.getValue();
+
+                Field field = modelClass.getDeclaredField(fieldName);
+
+                if (field.isAnnotationPresent(Column.class)) {
+                    Column column = field.getAnnotation(Column.class);
+
+                    switch (column.type()) {
+                        case VARCHAR, TEXT -> conditions.add(String.format("%s='%s'", fieldName, fieldValue));
+                        case INTEGER, BOOLEAN -> conditions.add(String.format("%s=%s", fieldName, fieldValue));
+                        case DATETIME -> conditions.add(String.format("%s=datetime('%s')", fieldName, ((Date)fieldValue).getTime()));
+                    }
+                } else if (field.isAnnotationPresent(Id.class)) {
+                    conditions.add(String.format("%s=%s", fieldName, (int) fieldValue));
+                } else if (field.isAnnotationPresent(OneToOne.class) || field.isAnnotationPresent(ManyToOne.class)) {
+                    conditions.add(String.format("%s=%d", fieldName + "_id", (int)fieldValue));
+                }
+            }
+
+            queryBuilder.append(String.join(" AND ", conditions));
+        }
+
+        queryBuilder.append(";");
+
+        String query = queryBuilder.toString();
+        Logger.info(query);
+
+        return query;
     }
 
     /**
@@ -302,7 +365,10 @@ public class SQLGenerator {
         Object idValue = reflectionUtil.getValueOfField(model, "id");
         queryBuilder.append(String.format(" WHERE id=%s RETURNING *;", idValue));
 
-        return queryBuilder.toString();
+        String query = queryBuilder.toString();
+        Logger.info(query);
+
+        return query;
     }
 
     /**
@@ -316,6 +382,10 @@ public class SQLGenerator {
     public static String generateDelete(IModel model) throws NoSuchFieldException, IllegalAccessException {
         String tableName = model.getClass().getSimpleName().toLowerCase();
         Integer id = (int)reflectionUtil.getValueOfField(model, "id");
-        return String.format("DELETE FROM %s WHERE id=%d RETURNING *;", tableName, id);
+
+        String query = String.format("DELETE FROM %s WHERE id=%d RETURNING *;", tableName, id);
+        Logger.info(query);
+
+        return query;
     }
 }
