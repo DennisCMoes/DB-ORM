@@ -50,6 +50,30 @@ public class Logger {
         }
     }
 
+    private static void clearLog(String fileName) {
+        File logFile = new File(LOG_DIRECTORY + File.separator + fileName);
+
+        if (logFile.exists()) {
+            try {
+                FileWriter writer = new FileWriter(logFile, false);
+                writer.close();
+                System.out.println("Log file " + fileName + " cleared successfully.");
+            } catch (IOException ex) {
+                System.err.println("Error clearing log file: " + ex.getMessage());
+            }
+        } else {
+            System.out.println("Log file " + fileName + " does not exist.");
+        }
+    }
+
+    public static void clearAccess() {
+        clearLog(ACCESS_LOG_FILE);
+    }
+
+    public static void clearError() {
+        clearLog(ERROR_LOG_FILE);
+    }
+
     public static void info(String message) {
         writeLog(LogLevel.INFO, message, ACCESS_LOG_FILE);
     }
