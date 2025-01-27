@@ -41,7 +41,7 @@ public class SQLGenerator {
 
         String query = queryBuilder.toString();
 
-        Logger.info(query);
+        Logger.query(query);
         return query;
     }
 
@@ -95,7 +95,7 @@ public class SQLGenerator {
         queryBuilder.append(String.join(", ", conditions)).append(");");
 
         String query = queryBuilder.toString();
-        Logger.info(query);
+        Logger.query(query);
 
         return query;
     }
@@ -216,7 +216,7 @@ public class SQLGenerator {
         queryBuilder.append(") RETURNING *;");
 
         String query = queryBuilder.toString();
-        Logger.info(query);
+        Logger.query(query);
 
         return query;
     }
@@ -278,7 +278,7 @@ public class SQLGenerator {
         queryBuilder.append(";");
 
         String query = queryBuilder.toString();
-        Logger.info(query);
+        Logger.query(query);
 
         return query;
     }
@@ -321,7 +321,7 @@ public class SQLGenerator {
         queryBuilder.append(";");
 
         String query = queryBuilder.toString();
-        Logger.info(query);
+        Logger.query(query);
 
         return query;
     }
@@ -366,7 +366,7 @@ public class SQLGenerator {
         queryBuilder.append(String.format(" WHERE id=%s RETURNING *;", idValue));
 
         String query = queryBuilder.toString();
-        Logger.info(query);
+        Logger.query(query);
 
         return query;
     }
@@ -384,7 +384,7 @@ public class SQLGenerator {
         Integer id = (int)reflectionUtil.getValueOfField(model, "id");
 
         String query = String.format("DELETE FROM %s WHERE id=%d RETURNING *;", tableName, id);
-        Logger.info(query);
+        Logger.query(query);
 
         return query;
     }

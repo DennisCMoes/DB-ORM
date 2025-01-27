@@ -14,6 +14,7 @@ public class Logger {
 
     public enum LogLevel {
         INFO,
+        QUERY,
         DEBUG,
         ERROR,
         WARN,
@@ -76,6 +77,10 @@ public class Logger {
 
     public static void info(String message) {
         writeLog(LogLevel.INFO, message, ACCESS_LOG_FILE);
+    }
+
+    public static void query(String message) {
+        writeLog(LogLevel.QUERY, message, ACCESS_LOG_FILE);
     }
 
     public static void debug(String message) {
