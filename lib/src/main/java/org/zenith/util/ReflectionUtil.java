@@ -58,9 +58,6 @@ public class ReflectionUtil {
             field.setAccessible(true);
             Annotation[] annotations = field.getDeclaredAnnotations();
 
-            if (annotations.length == 0)
-                continue;
-
             for (Annotation annotation : annotations) {
                 FieldMappingStrategy strategy = MAPPING_STRATEGIES.get(annotation.annotationType());
 

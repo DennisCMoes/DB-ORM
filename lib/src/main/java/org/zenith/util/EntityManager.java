@@ -30,9 +30,20 @@ public class EntityManager {
      * @throws NoSuchFieldException If a field specified in the model is not found
      * @throws IllegalAccessException If there is an access issue with a field in the model
      */
-    public boolean save(IModel model) throws SQLException, NoSuchFieldException, IllegalAccessException {
-        String insertQuery = SQLGenerator.generateInsert(model);
-        return db.executeQueryWithoutResult(insertQuery);
+    public boolean save(IModel model) {
+        try {
+            List<String> insertQueries = SQLGenerator.generateInsert(model);
+            for (String query : insertQueries) {
+                if (!db.executeQueryWithoutResult(query)) {
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (SQLException | NoSuchFieldException | IllegalAccessException ex) {
+            Logger.error(ex.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -45,9 +56,14 @@ public class EntityManager {
      * @throws NoSuchFieldException If a field specified in the model is not found
      * @throws IllegalAccessException If there is an access issue with a field in the model
      */
-    public boolean update(IModel model) throws SQLException, NoSuchFieldException, IllegalAccessException {
-        String updateQuery = SQLGenerator.generateUpdate(model);
-        return db.executeQueryWithoutResult(updateQuery);
+    public boolean update(IModel model) {
+        try {
+            String updateQuery = SQLGenerator.generateUpdate(model);
+            return db.executeQueryWithoutResult(updateQuery);
+        } catch (SQLException | NoSuchFieldException | IllegalAccessException ex) {
+            Logger.error(ex.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -60,9 +76,23 @@ public class EntityManager {
      * @throws NoSuchFieldException If a field specified in the model is not found
      * @throws IllegalAccessException If there is an access issue with a field in the model
      */
-    public boolean delete(IModel model) throws SQLException, NoSuchFieldException, IllegalAccessException {
-        String deleteQuery = SQLGenerator.generateDelete(model);
-        return db.executeQueryWithoutResult(deleteQuery);
+    public boolean delete(IModel model) {
+        try {
+            List<String> deleteQueries = SQLGenerator.generateDelete(model);
+
+            for (String query : deleteQueries) {
+                boolean deletedSuccessful = db.executeQueryWithoutResult(query);
+
+                if (!deletedSuccessful)
+                    return false;
+            }
+
+            return true;
+
+        } catch (SQLException | NoSuchFieldException | IllegalAccessException ex) {
+            Logger.error(ex.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -79,19 +109,22 @@ public class EntityManager {
      * @throws InstantiationException If there is an issue instantiating the model object
      * @throws NoSuchMethodException If there is an issue finding a method in the model class
      */
-    public <T extends IModel> List<T> list(Class<T> modelClass)
-            throws SQLException, NoSuchFieldException, IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException{
+    public <T extends IModel> List<T> list(Class<T> modelClass) {
+        try {
+            String selectQuery = SQLGenerator.generateSelect(modelClass, null, null);
+            ResultSet resultSet = db.executeQueryWithResult(selectQuery);
 
-        String selectQuery = SQLGenerator.generateSelect(modelClass, null, null);
-        ResultSet resultSet = db.executeQueryWithResult(selectQuery);
+            List<T> result = new ArrayList<>();
 
-        List<T> result = new ArrayList<>();
+            while (resultSet.next()) {
+                result.add(ReflectionUtil.mapToModel(resultSet, modelClass));
+            }
 
-        while (resultSet.next()) {
-            result.add(ReflectionUtil.mapToModel(resultSet, modelClass));
+            return result;
+        } catch (SQLException | NoSuchFieldException | IllegalAccessException | InvocationTargetException | InstantiationException | NoSuchMethodException ex) {
+            Logger.error(ex.getMessage());
+            return new ArrayList<>();
         }
-
-        return result;
     }
 
     /**
@@ -109,12 +142,15 @@ public class EntityManager {
      * @throws InstantiationException If there is an issue instantiating the model object
      * @throws NoSuchMethodException If there is an issue finding a method in the model class
      */
-    public IModel findById(Class<? extends IModel> modelClass, List<String> fieldsToReturn, int id)
-            throws SQLException, NoSuchFieldException, IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException {
-
-        String selectQuery = SQLGenerator.generateSelect(modelClass, fieldsToReturn, Map.of("id", id));
-        ResultSet resultSet = db.executeQueryWithResult(selectQuery);
-        return ReflectionUtil.mapToModel(resultSet, modelClass);
+    public IModel findById(Class<? extends IModel> modelClass, List<String> fieldsToReturn, int id) {
+        try {
+            String selectQuery = SQLGenerator.generateSelect(modelClass, fieldsToReturn, Map.of("id", id));
+            ResultSet resultSet = db.executeQueryWithResult(selectQuery);
+            return ReflectionUtil.mapToModel(resultSet, modelClass);
+        } catch (SQLException | NoSuchFieldException | IllegalAccessException | InvocationTargetException | InstantiationException | NoSuchMethodException ex) {
+            Logger.error(ex.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -132,11 +168,14 @@ public class EntityManager {
      * @throws InstantiationException If there is an issue instantiating the model object
      * @throws NoSuchMethodException If there is an issue finding a method in the model class
      */
-    public IModel findByField(Class<? extends IModel> modelClass, List<String> fieldsToReturn, Map<String, Object> fieldsToQuery)
-            throws SQLException, NoSuchFieldException, IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException {
-
-        String selectQuery = SQLGenerator.generateSelect(modelClass, fieldsToReturn, fieldsToQuery);
-        ResultSet resultSet = db.executeQueryWithResult(selectQuery);
-        return ReflectionUtil.mapToModel(resultSet, modelClass);
+    public IModel findByField(Class<? extends IModel> modelClass, List<String> fieldsToReturn, Map<String, Object> fieldsToQuery) {
+        try {
+            String selectQuery = SQLGenerator.generateSelect(modelClass, fieldsToReturn, fieldsToQuery);
+            ResultSet resultSet = db.executeQueryWithResult(selectQuery);
+            return ReflectionUtil.mapToModel(resultSet, modelClass);
+        } catch (SQLException | NoSuchFieldException | IllegalAccessException | InvocationTargetException | InstantiationException | NoSuchMethodException ex) {
+            Logger.error(ex.getMessage());
+            return null;
+        }
     }
 }

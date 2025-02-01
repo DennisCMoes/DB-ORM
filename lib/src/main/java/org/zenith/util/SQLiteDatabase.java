@@ -79,8 +79,7 @@ public class SQLiteDatabase {
      */
     public synchronized ResultSet executeQueryWithResult(String query) throws SQLException {
         Statement statement =  connection.createStatement();
-        ResultSet resultSet = statement.executeQuery(query);
-        return resultSet;
+        return statement.executeQuery(query);
     }
 
     /**

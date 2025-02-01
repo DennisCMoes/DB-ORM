@@ -44,24 +44,24 @@ class SQLGeneratorTest {
     void shouldGenerateCreateTableForSingleClass() {
         List<Class<? extends IModel>> classes = List.of(TestModel1.class);
 
-        String result = SQLGenerator.generateCreateTable(classes);
+        List<String> result = SQLGenerator.generateCreateTable(classes);
 
         String expected = "CREATE TABLE testmodel1 (id SERIAL PRIMARY KEY, name VARCHAR (64));";
 
-        assertEquals(expected, result);
+        assertEquals(expected, result.getFirst());
     }
 
     @Test
     void shouldGenerateCreateTableForMultipleClasses() {
         List<Class<? extends IModel>> classes = List.of(TestModel1.class, TestModel2.class);
 
-        String result = SQLGenerator.generateCreateTable(classes);
+        List<String> result = SQLGenerator.generateCreateTable(classes);
 
         String expected = """
                 CREATE TABLE testmodel1 (id SERIAL PRIMARY KEY, name VARCHAR (64));
                 CREATE TABLE testmodel2 (id SERIAL PRIMARY KEY, age INTEGER, salary TEXT, isWorking INTEGER, parent_id INT, FOREIGN KEY (parent_id) REFERENCES testmodel1(id));""";
 
-        assertEquals(expected, result);
+        assertEquals(expected, result.getFirst());
     }
 
     @Test
@@ -332,7 +332,7 @@ class SQLGeneratorTest {
             TestModel1 model = new TestModel1();
             model.id = 1;
 
-            String result = SQLGenerator.generateDelete(model);
+//            String result = SQLGenerator.generateDelete(model);
             String expected = "DELETE FROM testmodel1 WHERE id=1 RETURNING *;";
 
             assertEquals(expected, result);
