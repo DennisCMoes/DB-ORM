@@ -6,7 +6,7 @@ import org.zenith.annotation.relation.ManyToOne;
 import org.zenith.annotation.relation.OneToMany;
 import org.zenith.annotation.relation.OneToOne;
 import org.zenith.model.interfaces.IModel;
-import org.zenith.util.reflection.*;
+import org.zenith.util.strategies.reflection.*;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;

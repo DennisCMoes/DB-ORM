@@ -1,4 +1,4 @@
-package org.zenith.util.reflection;
+package org.zenith.util.strategies.reflection;
 
 import org.zenith.model.interfaces.IModel;
 import org.zenith.util.ReflectionUtil;
@@ -32,8 +32,7 @@ public class OneToManyFieldMappingStrategy extends MappingBase implements FieldM
             if (!(actualTypeArgument instanceof Class<?> actualClass))
                 return;
 
-            ReflectionUtil reflectionUtil = new ReflectionUtil();
-            int id = (int)reflectionUtil.getValueOfField(model, "id");
+            int id = (int)ReflectionUtil.getValueOfField(model, "id");
             String relatedFieldName = getRelatedFieldName(model);
 
             List<IModel> linkedSubClasses = fetchRelatedModels(actualClass, relatedFieldName, id);

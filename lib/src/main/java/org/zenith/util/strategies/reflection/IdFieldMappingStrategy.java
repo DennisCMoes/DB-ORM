@@ -1,4 +1,4 @@
-package org.zenith.util.reflection;
+package org.zenith.util.strategies.reflection;
 
 import org.zenith.model.interfaces.IModel;
 
