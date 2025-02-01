@@ -3,6 +3,7 @@ package org.zenith.util;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.zenith.annotation.Column;
+import org.zenith.annotation.Entity;
 import org.zenith.annotation.Id;
 import org.zenith.annotation.relation.OneToOne;
 import org.zenith.enumeration.ColumnType;
@@ -12,38 +13,40 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Entity
+class TestModel1 implements IModel {
+    @Id
+    public int id;
+    @Column(type = ColumnType.VARCHAR)
+    public String name;
+}
+
+@Entity
+class TestModel2 implements IModel {
+    @Id
+    public int id;
+    @Column(type = ColumnType.INTEGER)
+    public int age;
+    @Column(type = ColumnType.TEXT)
+    public double salary;
+    @Column(type = ColumnType.BOOLEAN)
+    public boolean isWorking;
+
+    @OneToOne
+    public TestModel1 parent;
+}
+
+@Entity
+class EmptyModel implements IModel { }
+
 class SQLGeneratorTest {
-    public static class TestModel1 implements IModel {
-        @Id
-        public int id;
-        @Column(type = ColumnType.VARCHAR)
-        public String name;
-    }
-
-    public static class TestModel2 implements IModel {
-        @Id
-        public int id;
-        @Column(type = ColumnType.INTEGER)
-        public int age;
-        @Column(type = ColumnType.TEXT)
-        public double salary;
-        @Column(type = ColumnType.BOOLEAN)
-        public boolean isWorking;
-
-        @OneToOne
-        public TestModel1 parent;
-    }
-
-    public static class EmptyModel implements IModel { }
-
     @Test
     void shouldGenerateCreateTableForSingleClass() {
         List<Class<? extends IModel>> classes = List.of(TestModel1.class);
 
         String result = SQLGenerator.generateCreateTable(classes);
 
-        String expected = """
-                CREATE TABLE testmodel1 (id SERIAL PRIMARY KEY, name VARCHAR (64));""";
+        String expected = "CREATE TABLE testmodel1 (id SERIAL PRIMARY KEY, name VARCHAR (64));";
 
         assertEquals(expected, result);
     }
@@ -56,7 +59,7 @@ class SQLGeneratorTest {
 
         String expected = """
                 CREATE TABLE testmodel1 (id SERIAL PRIMARY KEY, name VARCHAR (64));
-                CREATE TABLE testmodel2 (id SERIAL PRIMARY KEY, age INTEGER (64), salary TEXT, isWorking BOOLEAN (64), parent_id INT);""";
+                CREATE TABLE testmodel2 (id SERIAL PRIMARY KEY, age INTEGER, salary TEXT, isWorking INTEGER, parent_id INT, FOREIGN KEY (parent_id) REFERENCES testmodel1(id));""";
 
         assertEquals(expected, result);
     }
@@ -112,11 +115,11 @@ class SQLGeneratorTest {
             model.id = 1;
             model.name = null;
 
-            String result = SQLGenerator.generateInsert(model);
-            String expected = """
-                INSERT INTO testmodel1 (id, name) VALUES (1, NULL) RETURNING *;""";
+            List<String> result = SQLGenerator.generateInsert(model);
+            String expected = "INSERT INTO testmodel1 (id, name) VALUES (1, NULL) RETURNING *;";
 
-            assertEquals(expected, result);
+            assertEquals(1, result.size());
+            assertEquals(expected, result.getFirst());
         }
 
         @Test
@@ -125,11 +128,10 @@ class SQLGeneratorTest {
             model.id = 1;
             model.name = null;
 
-            String result = SQLGenerator.generateInsert(model);
-            String expected = """
-                INSERT INTO testmodel1 (id, name) VALUES (1, NULL) RETURNING *;""";
+            List<String> result = SQLGenerator.generateInsert(model);
+            String expected = "INSERT INTO testmodel1 (id, name) VALUES (1, NULL) RETURNING *;";
 
-            assertEquals(expected, result);
+            assertEquals(expected, result.getFirst());
         }
 
         @Test
@@ -138,11 +140,10 @@ class SQLGeneratorTest {
             model.id = 1;
             model.name = "Hello";
 
-            String result = SQLGenerator.generateInsert(model);
-            String expected = """
-                INSERT INTO testmodel1 (id, name) VALUES (1, 'Hello') RETURNING *;""";
+            List<String> result = SQLGenerator.generateInsert(model);
+            String expected = "INSERT INTO testmodel1 (id, name) VALUES (1, 'Hello') RETURNING *;";
 
-            assertEquals(expected, result);
+            assertEquals(expected, result.getFirst());
         }
 
         @Test
@@ -151,22 +152,20 @@ class SQLGeneratorTest {
             model.id = 1;
             model.name = "";
 
-            String result = SQLGenerator.generateInsert(model);
-            String expected = """
-                INSERT INTO testmodel1 (id, name) VALUES (1, '') RETURNING *;""";
+            List<String> result = SQLGenerator.generateInsert(model);
+            String expected = "INSERT INTO testmodel1 (id, name) VALUES (1, '') RETURNING *;";
 
-            assertEquals(expected, result);
+            assertEquals(expected, result.getFirst());
         }
 
         @Test
         void shouldGenerateValidInsertForModelWIthAllNullFields() throws IllegalArgumentException, NoSuchFieldException, IllegalAccessException {
             TestModel1 model = new TestModel1();
 
-            String result = SQLGenerator.generateInsert(model);
-            String expected = """
-                INSERT INTO testmodel1 (id, name) VALUES (0, NULL) RETURNING *;""";
+            List<String> result = SQLGenerator.generateInsert(model);
+            String expected = "INSERT INTO testmodel1 (id, name) VALUES (0, NULL) RETURNING *;";
 
-            assertEquals(expected, result);
+            assertEquals(expected, result.getFirst());
         }
 
         @Test
@@ -180,11 +179,10 @@ class SQLGeneratorTest {
             model2.salary = 10;
             model2.parent = model;
 
-            String result = SQLGenerator.generateInsert(model2);
-            String expected = """
-                INSERT INTO testmodel2 (id, age, salary, isWorking, parent_id) VALUES (0, 10, '10.0', false, 1) RETURNING *;""";
+            List<String> result = SQLGenerator.generateInsert(model2);
+            String expected = "INSERT INTO testmodel2 (id, age, salary, isWorking, parent_id) VALUES (0, 10, '10.0', 0, 1) RETURNING *;";
 
-            assertEquals(expected, result);
+            assertEquals(expected, result.getFirst());
         }
 
         @Test
@@ -193,11 +191,10 @@ class SQLGeneratorTest {
             model.age = 10;
             model.salary = 12.0;
 
-            String result = SQLGenerator.generateInsert(model);
-            String expected = """
-                INSERT INTO testmodel2 (id, age, salary, isWorking, parent_id) VALUES (0, 10, '12.0', false, NULL) RETURNING *;""";
+            List<String> result = SQLGenerator.generateInsert(model);
+            String expected = "INSERT INTO testmodel2 (id, age, salary, isWorking, parent_id) VALUES (0, 10, '12.0', 0, NULL) RETURNING *;";
 
-            assertEquals(expected, result);
+            assertEquals(expected, result.getFirst());
         }
 
         @Test
@@ -239,10 +236,12 @@ class SQLGeneratorTest {
         @Test
         void shouldGenerateSelectSpecificColumnsWithMultipleFilters() throws NoSuchFieldException {
             List<String> fieldsToReturn = List.of("id", "name");
-            Map<String, Object> fieldsToQuery = Map.of("id", 1, "name", "Hello");
+            Map<String, Object> fieldsToQuery = new TreeMap<>();
+            fieldsToQuery.put("id", 1);
+            fieldsToQuery.put("name", "hello");
 
             String result = SQLGenerator.generateSelect(TestModel1.class, fieldsToReturn, fieldsToQuery);
-            String expected = "SELECT id, name FROM testmodel1 WHERE name='Hello' AND id=1;";
+            String expected = "SELECT id, name FROM testmodel1 WHERE id=1 AND name='hello';";
 
             assertEquals(expected, result);
         }

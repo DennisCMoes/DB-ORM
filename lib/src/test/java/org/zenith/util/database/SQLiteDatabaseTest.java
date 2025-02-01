@@ -1,6 +1,7 @@
 package org.zenith.util.database;
 
 import org.junit.jupiter.api.*;
+import org.zenith.util.SQLiteDatabase;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
