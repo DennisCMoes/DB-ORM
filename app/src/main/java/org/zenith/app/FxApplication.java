@@ -7,8 +7,6 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 
-import org.zenith.util.SQLGenerator;
-
 public class FxApplication extends Application {
     @Override
     public void start(Stage stage) throws IOException {

@@ -5,6 +5,7 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
+import org.zenith.models.SubItem;
 import org.zenith.models.TodoItem;
 import org.zenith.util.EntityManager;
 
@@ -52,13 +53,34 @@ public class TodoService {
     }
 
     public void addTodo(TodoItem todoItem) throws SQLException, NoSuchFieldException, IllegalAccessException {
-        todos.add(todoItem);
         entityManager.save(todoItem);
+        loadTodos();
     }
 
-    public void deleteTodo(TodoItem todoItem) throws SQLException, NoSuchFieldException, IllegalAccessException {
-        todos.remove(todoItem);
-        entityManager.delete(todoItem);
+    public SubItem addSubItem(TodoItem todoItem, String title) {
+        SubItem subItem = new SubItem();
+        subItem.title = title;
+        subItem.todoItem = todoItem;
+
+        boolean result = entityManager.save(subItem);
+
+        if (!result) {
+            return null;
+        }
+
+        int index = todos.indexOf(todoItem);
+        todos.get(index).subItems.add(subItem);
+        return subItem;
+    }
+
+    public boolean deleteTodo(TodoItem todoItem) throws SQLException, NoSuchFieldException, IllegalAccessException {
+        boolean isDeleted = entityManager.delete(todoItem);
+
+        if (isDeleted) {
+            todos.remove(todoItem);
+        }
+
+        return isDeleted;
     }
 
     public void updateTodo(TodoItem todoItem) throws SQLException, NoSuchFieldException, IllegalAccessException {
