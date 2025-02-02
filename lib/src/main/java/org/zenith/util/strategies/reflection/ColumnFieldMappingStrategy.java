@@ -21,7 +21,13 @@ public class ColumnFieldMappingStrategy implements FieldMappingStrategy {
 
         try {
             switch (annotation.type()) {
-                case ColumnType.DATETIME -> fieldValue = (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")).parse((String) fieldValue);
+                case ColumnType.DATETIME -> {
+                    if (fieldValue == null) {
+                        return;
+                    }
+
+                    fieldValue = (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")).parse((String) fieldValue);
+                }
                 case ColumnType.BOOLEAN -> fieldValue = (int) fieldValue != 0;
             }
         } catch (ParseException ex) {

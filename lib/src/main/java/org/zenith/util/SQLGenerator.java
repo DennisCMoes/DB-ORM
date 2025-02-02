@@ -50,7 +50,7 @@ public class SQLGenerator {
             Annotation annotationOfField = field.getDeclaredAnnotations()[0];
 
             switch (annotationOfField) {
-                case Id ignored -> conditions.add(String.format("%s SERIAL PRIMARY KEY", fieldName));
+                case Id ignored -> conditions.add(String.format("%s INTEGER PRIMARY KEY AUTOINCREMENT", fieldName));
                 case OneToOne ignored -> {
                     conditions.add(String.format("%s INT", fieldName + "_id"));
                     conditions.add(String.format("FOREIGN KEY (%s_id) REFERENCES %s(id)", fieldName, fieldTableName));
@@ -319,10 +319,14 @@ public class SQLGenerator {
             Object fieldValue = ReflectionUtil.getValueOfField(model, field.getName());
             Annotation annotationOfField = field.getDeclaredAnnotations()[0];
 
+            if (fieldValue == null)
+                continue;
+
             if (annotationOfField instanceof Column column) {
                 switch (column.type()) {
                     case VARCHAR, TEXT -> fieldsToUpdate.add(String.format("%s='%s'", field.getName(), fieldValue));
-                    case INTEGER, BOOLEAN -> fieldsToUpdate.add(String.format("%s=%s", field.getName(), fieldValue));
+                    case INTEGER -> fieldsToUpdate.add(String.format("%s=%s", field.getName(), fieldValue));
+                    case BOOLEAN -> fieldsToUpdate.add(String.format("%s=%d", field.getName(), !(fieldValue instanceof Boolean) ? 0 : ((boolean) fieldValue) ? 1 : 0));
                     case DATETIME -> fieldsToUpdate.add(String.format("%s=datetime('%s')", field.getName(), ((Date)fieldValue).getTime()));
                 }
             } else if (annotationOfField instanceof OneToOne || annotationOfField instanceof ManyToOne) {
