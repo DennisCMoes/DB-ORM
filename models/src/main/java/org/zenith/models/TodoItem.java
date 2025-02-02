@@ -3,7 +3,6 @@ package org.zenith.models;
 import org.zenith.annotation.Id;
 import org.zenith.annotation.Column;
 import org.zenith.annotation.Entity;
-import org.zenith.annotation.relation.ManyToMany;
 import org.zenith.annotation.relation.OneToMany;
 import org.zenith.enumeration.ColumnType;
 import org.zenith.model.interfaces.IModel;
@@ -27,18 +26,14 @@ public class TodoItem implements IModel {
     @OneToMany
     public List<SubItem> subItems;
 
-    @ManyToMany
-    public List<Category> categories;
-
     public TodoItem() { }
 
-    public TodoItem(int id, String description, String title, boolean isCompleted, Date expiresAt, List<Category> categories) {
+    public TodoItem(int id, String description, String title, boolean isCompleted, Date expiresAt) {
         this.description = description;
         this.id = id;
         this.title = title;
         this.isCompleted = isCompleted;
         this.expiresAt = expiresAt;
-        this.categories = categories;
     }
 
     @Override

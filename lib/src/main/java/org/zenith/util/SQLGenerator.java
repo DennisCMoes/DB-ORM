@@ -3,7 +3,6 @@ package org.zenith.util;
 import org.zenith.annotation.Column;
 import org.zenith.annotation.Entity;
 import org.zenith.annotation.Id;
-import org.zenith.annotation.relation.ManyToMany;
 import org.zenith.annotation.relation.ManyToOne;
 import org.zenith.annotation.relation.OneToMany;
 import org.zenith.annotation.relation.OneToOne;
@@ -14,7 +13,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * A utility class used by the EntityMapper to generate SQL queries based on entity mappings.
@@ -32,7 +30,9 @@ public class SQLGenerator {
      * @return A string containing the SQL query to create the table
      * @throws IllegalArgumentException If the model does not contain the annotated field
      */
-    private static List<String> generateCreateTable(Class<? extends IModel> model) throws IllegalArgumentException {
+    private static List<String> generateCreateTable(Class<? extends IModel> model)
+            throws IllegalArgumentException {
+
         StringBuilder queryBuilder = new StringBuilder();
         List<Field> fields = ReflectionUtil.getFieldsOfModel(model);
 
@@ -42,10 +42,8 @@ public class SQLGenerator {
 
         queryBuilder.append(String.format("CREATE TABLE %s (", model.getSimpleName().toLowerCase()));
         List<String> conditions = new ArrayList<>();
-        List<String> manyToManyTables = new ArrayList<>();
 
-        for (int i = 0; i < fields.size(); i++) {
-            Field field = fields.get(i);
+        for (Field field : fields) {
             String fieldName = field.getName();
             String fieldTableName = field.getType().getSimpleName().toLowerCase();
 
@@ -62,33 +60,6 @@ public class SQLGenerator {
                     conditions.add(String.format("FOREIGN KEY (%s_id) REFERENCES %s(id)", fieldName, fieldTableName));
                 }
                 case OneToMany ignored -> { } // Parent
-                case ManyToMany ignored when List.class.isAssignableFrom(field.getType()) -> {
-                    Type genericType = field.getGenericType();
-                    if (genericType instanceof ParameterizedType parameterizedType) {
-                        Type actualTypeArgument = parameterizedType.getActualTypeArguments()[0];
-                        if (actualTypeArgument instanceof Class<?> relatedModelClass) {
-                            String relatedTableName = relatedModelClass.getSimpleName().toLowerCase();
-                            String joinTableName = model.getSimpleName().toLowerCase() + "_" + relatedTableName;
-
-                            String joinTableQuery = String.format(
-                                    "CREATE TABLE %s (%s_id INT, %s_id INT, " +
-                                            "FOREIGN KEY (%s_id) REFERENCES %s(id), " +
-                                            "FOREIGN KEY (%s_id) REFERENCES %s(id));",
-                                    joinTableName,
-                                    model.getSimpleName().toLowerCase(),
-                                    relatedTableName,
-                                    model.getSimpleName().toLowerCase(),
-                                    model.getSimpleName().toLowerCase(),
-                                    relatedTableName,
-                                    relatedTableName
-                            );
-
-                            manyToManyTables.add(joinTableQuery);
-                        }
-                    }
-
-                    conditions.add(String.format("%s INTEGER", fieldName));
-                }
                 case Column column -> {
                     switch (column.type()) {
                         case BOOLEAN, INTEGER -> conditions.add(String.format("%s INTEGER", fieldName));
@@ -105,22 +76,8 @@ public class SQLGenerator {
         List<String> queries = new ArrayList<>();
         queries.add(queryBuilder.toString());
 
-        if (!manyToManyTables.isEmpty()) {
-            queries.addAll(manyToManyTables);
-        }
-
         queries.forEach(Logger::query);
         return queries;
-    }
-
-    /**
-     * Generates an SQL query to drop a table for a given model class
-     *
-     * @param model The class representing the model for which the table is dropped
-     * @return A string containing the SQL query to drop the table
-     */
-    private static String generateDropTable(Class<? extends IModel> model) {
-        return String.format("DROP TABLE IF EXISTS %s CASCADE;", model.getSimpleName().toLowerCase());
     }
 
     /**
@@ -130,35 +87,17 @@ public class SQLGenerator {
      * @return A string containing the SQL queries to create the tables
      * @throws IllegalArgumentException If the list of classes is null or empty
      */
-    public static List<String> generateCreateTable(List<Class<? extends IModel>> models) throws IllegalArgumentException {
+    public static List<String> generateCreateTable(List<Class<? extends IModel>> models)
+            throws IllegalArgumentException {
+
         if (models == null || models.isEmpty()) {
             throw new IllegalArgumentException("The list of classes must cannot be null or empty.");
         }
-
-        if (models.size() == 1)
-            return SQLGenerator.generateCreateTable(models.getFirst());
 
         return models.stream()
                 .map(SQLGenerator::generateCreateTable)
                 .flatMap(Collection::stream)
                 .toList();
-    }
-
-    /**
-     * Generates SQL queries to drop tables for a list of model classes
-     *
-     * @param models The list of model classes for which tables are dropped
-     * @return A string containing the SQL queries to drop the tables
-     * @throws IllegalArgumentException If the list of classes is null or empty
-     */
-    public static String generateDropTable(List<Class<? extends IModel>> models) throws IllegalArgumentException {
-        if (models == null || models.isEmpty()) {
-            throw new IllegalArgumentException("The list of classes must not be null or empty.");
-        }
-
-        return models.stream()
-                .map(SQLGenerator::generateDropTable)
-                .collect(Collectors.joining("\n"));
     }
 
     /**
@@ -170,7 +109,9 @@ public class SQLGenerator {
      * @throws NoSuchFieldException If a required field is not found
      * @throws IllegalAccessException If a field cannot be accessed
      */
-    public static List<String> generateInsert(IModel model) throws IllegalArgumentException, NoSuchFieldException, IllegalAccessException {
+    public static List<String> generateInsert(IModel model)
+            throws IllegalArgumentException, NoSuchFieldException, IllegalAccessException {
+
         StringBuilder queryBuilder = new StringBuilder();
         List<Field> fields = ReflectionUtil.getFieldsOfModelWithoutTypes(model.getClass(), List.of(OneToMany.class));
 
@@ -198,7 +139,6 @@ public class SQLGenerator {
 
         queryBuilder.append(String.format("INSERT INTO %s (%s) VALUES (", tableName, tableCols));
         List<String> fieldsToQueryString = new ArrayList<>();
-        Map<String, List<Integer>> manyToManyFields = new HashMap<>();
 
         for (Field field : fields) {
             String fieldName = field.getName();
@@ -215,7 +155,7 @@ public class SQLGenerator {
                 switch (column.type()) {
                     case VARCHAR, TEXT -> fieldsToQueryString.add(String.format("'%s'", fieldValue));
                     case INTEGER -> fieldsToQueryString.add(String.format("%s", fieldValue));
-                    case BOOLEAN -> fieldsToQueryString.add(String.format("%d", ((boolean) fieldValue) ? 1 : 0));
+                    case BOOLEAN -> fieldsToQueryString.add(String.format("%d", !(fieldValue instanceof Boolean) ? 0 : ((boolean) fieldValue) ? 1 : 0));
                     case DATETIME -> fieldsToQueryString.add(String.format("datetime(%d, 'unixepoch')", ((Date)fieldValue).getTime() / 1000));
                 }
             } else if (annotationOfField instanceof Id) {
@@ -228,79 +168,16 @@ public class SQLGenerator {
                 Object relatedIdValue = relatedField.get(fieldValue);
 
                 fieldsToQueryString.add(String.format("%d", (int)relatedIdValue));
-            } else if (annotationOfField instanceof ManyToMany) {
-                if (List.class.isAssignableFrom(field.getType())) {
-                    List<?> relatedItems = (List<?>) fieldValue;
-                    List<Integer> relatedIds = new ArrayList<>();
-
-                    for (Object relatedItem : relatedItems) {
-                        Field relatedField = ReflectionUtil.getFieldByName((Class<? extends IModel>) relatedItem.getClass(), "id");
-                        Object relatedIdValue = relatedField.get(relatedItem);
-                        relatedIds.add((Integer) relatedIdValue);
-                    }
-
-                    manyToManyFields.put(fieldName, relatedIds);
-                    fieldsToQueryString.add("NULL");
-                }
             }
         }
 
         queryBuilder.append(String.join(", ", fieldsToQueryString));
         queryBuilder.append(") RETURNING *;");
 
-        List<String> manyToManyQueries = new ArrayList<>();
-
-        for (Map.Entry<String, List<Integer>> entry : manyToManyFields.entrySet()) {
-            String fieldName = entry.getKey();
-            List<Integer> relatedIds = entry.getValue();
-
-            Class<?> relatedClass = ReflectionUtil.getFieldType(model.getClass(), fieldName);
-            String relatedTableName = relatedClass.getSimpleName().toLowerCase();
-            String joinTableName = tableName + "_" + relatedTableName;
-
-            for (Integer relatedId : relatedIds) {
-                // INSERT INTO todoitem_categorie (todoitem_id, categorie_id) VALUES (3, 1)
-                manyToManyQueries
-                        .add(String.format("INSERT INTO %s (%s_id, %s_id) VALUES (%d, %d);",
-                                joinTableName,
-                                model.getClass().getSimpleName().toLowerCase(),
-                                relatedTableName,
-                                ReflectionUtil.getValueOfField(model, "id"),
-                                relatedId));
-            }
-        }
-
         List<String> result = new ArrayList<>(List.of(queryBuilder.toString()));
-        if (!manyToManyFields.isEmpty())
-            result.addAll(manyToManyQueries);
-
         result.forEach(Logger::query);
 
         return result;
-    }
-
-    public static <T extends IModel> String generateManyToManySelect(T parentClass, Class<? extends IModel> childClass, List<String> fieldsToReturn)
-            throws NoSuchFieldException, IllegalAccessException {
-
-        StringBuilder queryBuilder = new StringBuilder();
-        queryBuilder.append("SELECT ");
-
-        if (fieldsToReturn == null || fieldsToReturn.isEmpty()) {
-            queryBuilder.append("*");
-        } else {
-            queryBuilder.append(String.join(", ", fieldsToReturn));
-        }
-
-        String tableName = parentClass.getClass().getSimpleName().toLowerCase() + "_" + childClass.getSimpleName().toLowerCase();
-
-        // FROM clause
-        queryBuilder.append(String.format(" FROM %s", tableName));
-
-        // WHERE clause
-        // 2025-01-27 17:05:04 [QUERY] INSERT INTO todoitem_category (todoitem_id, category_id) VALUES (3, 1);
-        // String countQuery = "SELECT * FROM todoitem_category WHERE todoitem_id = 1;";
-        queryBuilder.append(String.format(" WHERE %s=%d", parentClass.getClass().getSimpleName().toLowerCase() + "_id", ReflectionUtil.getValueOfField(parentClass, "id")));
-        return queryBuilder.toString();
     }
 
     /**
@@ -311,7 +188,7 @@ public class SQLGenerator {
      * @param fieldsToQuery The list of fields to include in the WHERE clause
      * @return A string containing the SQL SELECT query
      * @throws NoSuchFieldException If a specified field is not found
-     * @throws IllegalAccessException If a field cannot be accessed
+     * @throws IllegalArgumentException If provided model does not have the {@link Entity} annotation
      */
     public static String generateSelect(Class<? extends IModel> modelClass, List<String> fieldsToReturn, Map<String, Object> fieldsToQuery)
             throws NoSuchFieldException, IllegalArgumentException {
@@ -368,7 +245,15 @@ public class SQLGenerator {
         return query;
     }
 
-    // TODO: Make a generateManyToManyCountSelect just like the generateManyToManySelect
+    /**
+     * Generates a SQL SELECT COUNT(*) query for a given model class, with optional filtering conditions
+     * The generated query counts the number of rows in the table corresponding to the given model class
+     *
+     * @param modelClass The class of the model, which extends {@link IModel}. The table name is derived from the clas name
+     * @param fieldsToQuery A map of field names and their corresponding values to be used as filtering conditions in the WHERE clause
+     * @return A valid SQL query string that counts the number of records based on the provided conditions
+     * @throws NoSuchFieldException If a field in {@code fieldsToQuery} does not exist in the model class
+     */
     public static String generateCountSelect(Class<? extends IModel> modelClass, Map<String, Object> fieldsToQuery)
             throws NoSuchFieldException {
 
@@ -420,7 +305,9 @@ public class SQLGenerator {
      * @throws NoSuchFieldException If a required field is not found
      * @throws IllegalAccessException If a field cannot be accessed
      */
-    public static String generateUpdate(IModel model) throws NoSuchFieldException, IllegalAccessException {
+    public static String generateUpdate(IModel model)
+            throws NoSuchFieldException, IllegalAccessException {
+
         StringBuilder queryBuilder = new StringBuilder();
         String tableName = model.getClass().getSimpleName().toLowerCase();
 
@@ -465,7 +352,9 @@ public class SQLGenerator {
      * @throws NoSuchFieldException If the "id" field is not found
      * @throws IllegalAccessException If the "id" field cannot be accessed
      */
-    public static List<String> generateDelete(IModel model) throws NoSuchFieldException, IllegalAccessException {
+    public static List<String> generateDelete(IModel model)
+            throws NoSuchFieldException, IllegalAccessException {
+
         String deleteQueryTemplate = "DELETE FROM %s WHERE %s=%d RETURNING *;";
         String tableName = model.getClass().getSimpleName().toLowerCase();
         Object idValue = ReflectionUtil.getValueOfField(model, "id");

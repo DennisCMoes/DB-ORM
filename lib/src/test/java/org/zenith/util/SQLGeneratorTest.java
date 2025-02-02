@@ -13,33 +13,33 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Entity
-class TestModel1 implements IModel {
-    @Id
-    public int id;
-    @Column(type = ColumnType.VARCHAR)
-    public String name;
-}
-
-@Entity
-class TestModel2 implements IModel {
-    @Id
-    public int id;
-    @Column(type = ColumnType.INTEGER)
-    public int age;
-    @Column(type = ColumnType.TEXT)
-    public double salary;
-    @Column(type = ColumnType.BOOLEAN)
-    public boolean isWorking;
-
-    @OneToOne
-    public TestModel1 parent;
-}
-
-@Entity
-class EmptyModel implements IModel { }
-
 class SQLGeneratorTest {
+    @Entity
+    class TestModel1 implements IModel {
+        @Id
+        public int id;
+        @Column(type = ColumnType.VARCHAR)
+        public String name;
+    }
+
+    @Entity
+    class TestModel2 implements IModel {
+        @Id
+        public int id;
+        @Column(type = ColumnType.INTEGER)
+        public int age;
+        @Column(type = ColumnType.TEXT)
+        public double salary;
+        @Column(type = ColumnType.BOOLEAN)
+        public boolean isWorking;
+
+        @OneToOne
+        public TestModel1 parent;
+    }
+
+    @Entity
+    class EmptyModel implements IModel { }
+
     @Test
     void shouldGenerateCreateTableForSingleClass() {
         List<Class<? extends IModel>> classes = List.of(TestModel1.class);
@@ -57,11 +57,12 @@ class SQLGeneratorTest {
 
         List<String> result = SQLGenerator.generateCreateTable(classes);
 
-        String expected = """
-                CREATE TABLE testmodel1 (id SERIAL PRIMARY KEY, name VARCHAR (64));
-                CREATE TABLE testmodel2 (id SERIAL PRIMARY KEY, age INTEGER, salary TEXT, isWorking INTEGER, parent_id INT, FOREIGN KEY (parent_id) REFERENCES testmodel1(id));""";
+        List<String> expected = List.of(
+                "CREATE TABLE testmodel1 (id SERIAL PRIMARY KEY, name VARCHAR (64));",
+                "CREATE TABLE testmodel2 (id SERIAL PRIMARY KEY, age INTEGER, salary TEXT, isWorking INTEGER, parent_id INT, FOREIGN KEY (parent_id) REFERENCES testmodel1(id));"
+        );
 
-        assertEquals(expected, result.getFirst());
+        assertEquals(expected, result);
     }
 
     @Test
@@ -74,37 +75,6 @@ class SQLGeneratorTest {
     void shouldThrowIllegalArgumentExceptionWhenGenerateCreateTableIsCalledWithEmptyList() {
         List<Class<? extends IModel>> classes = new ArrayList<>();
         assertThrows(IllegalArgumentException.class, () -> SQLGenerator.generateCreateTable(classes));
-    }
-
-    @Test
-    void shouldGenerateDropTableForSingleClass() {
-        List<Class<? extends IModel>> classes = List.of(TestModel1.class);
-
-        String result = SQLGenerator.generateDropTable(classes);
-
-        String expected = """
-                DROP TABLE IF EXISTS testmodel1 CASCADE;""";
-
-        assertEquals(expected, result);
-    }
-
-    @Test
-    void shouldGenerateDropTableForMultipleClass() {
-        List<Class<? extends IModel>> classes = List.of(TestModel1.class, TestModel2.class);
-
-        String result = SQLGenerator.generateDropTable(classes);
-
-        String expected = """
-                DROP TABLE IF EXISTS testmodel1 CASCADE;
-                DROP TABLE IF EXISTS testmodel2 CASCADE;""";
-
-        assertEquals(expected, result);
-    }
-
-    @Test
-    void shouldThrowIllegalArgumentExceptionWhenGenerateDropTableIsCalledWithEmptyList() {
-        List<Class<? extends IModel>> classes = new ArrayList<>();
-        assertThrows(IllegalArgumentException.class, () -> SQLGenerator.generateDropTable(classes));
     }
 
     @Nested
@@ -163,7 +133,7 @@ class SQLGeneratorTest {
             TestModel1 model = new TestModel1();
 
             List<String> result = SQLGenerator.generateInsert(model);
-            String expected = "INSERT INTO testmodel1 (id, name) VALUES (0, NULL) RETURNING *;";
+            String expected = "INSERT INTO testmodel1 (name) VALUES (NULL) RETURNING *;";
 
             assertEquals(expected, result.getFirst());
         }
@@ -180,7 +150,7 @@ class SQLGeneratorTest {
             model2.parent = model;
 
             List<String> result = SQLGenerator.generateInsert(model2);
-            String expected = "INSERT INTO testmodel2 (id, age, salary, isWorking, parent_id) VALUES (0, 10, '10.0', 0, 1) RETURNING *;";
+            String expected = "INSERT INTO testmodel2 (age, salary, isWorking, parent_id) VALUES (10, '10.0', 0, 1) RETURNING *;";
 
             assertEquals(expected, result.getFirst());
         }
@@ -192,7 +162,7 @@ class SQLGeneratorTest {
             model.salary = 12.0;
 
             List<String> result = SQLGenerator.generateInsert(model);
-            String expected = "INSERT INTO testmodel2 (id, age, salary, isWorking, parent_id) VALUES (0, 10, '12.0', 0, NULL) RETURNING *;";
+            String expected = "INSERT INTO testmodel2 (age, salary, isWorking, parent_id) VALUES (10, '12.0', 0, NULL) RETURNING *;";
 
             assertEquals(expected, result.getFirst());
         }
@@ -332,10 +302,10 @@ class SQLGeneratorTest {
             TestModel1 model = new TestModel1();
             model.id = 1;
 
-//            String result = SQLGenerator.generateDelete(model);
+            List<String> result = SQLGenerator.generateDelete(model);
             String expected = "DELETE FROM testmodel1 WHERE id=1 RETURNING *;";
 
-            assertEquals(expected, result);
+            assertEquals(expected, result.getFirst());
         }
     }
 }

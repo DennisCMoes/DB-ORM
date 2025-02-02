@@ -117,7 +117,9 @@ public class ReflectionUtil {
      * @throws NoSuchFieldException If the field with the specified name is not found in the model
      * @throws IllegalAccessException if the field cannot be accessed (e.g., if it's private)
      */
-    public static Object getValueOfField(IModel model, String fieldName) throws NoSuchFieldException, IllegalAccessException {
+    public static Object getValueOfField(IModel model, String fieldName)
+            throws NoSuchFieldException, IllegalAccessException {
+
         Field field = getFieldByName(model.getClass(), fieldName);
         field.trySetAccessible();
         return field.get(model);
@@ -131,7 +133,9 @@ public class ReflectionUtil {
      * @return The {@link Field} object corresponding to the specified name
      * @throws NoSuchFieldException If a field with the specified name is not found in the class
      */
-    public static Field getFieldByName(Class<? extends IModel> model, String fieldName) throws NoSuchFieldException {
+    public static Field getFieldByName(Class<? extends IModel> model, String fieldName)
+            throws NoSuchFieldException {
+
         Field field = model.getDeclaredField(fieldName);
         field.trySetAccessible();
         return field;
@@ -151,7 +155,20 @@ public class ReflectionUtil {
                     : field.getName();
     }
 
-    public static Class<?> getFieldType(Class<?> modelClass, String fieldName) throws NoSuchFieldException {
+    /**
+     * Retrieves the type of the specified field in a given model class
+     * If the field is a generic {@code List<T>}, it returns the actual type parameter {@code T}
+     * Otherwise, it returns the declared field type
+     *
+     * @param modelClass The class containing the field
+     * @param fieldName The name of the field whose type is to be determined
+     * @return The {@code Class} representing the field's type. If the field is a generic list, it returns the type parameter
+     *          {@code T}; otherwise, it returns the declared type
+     * @throws NoSuchFieldException If the specified field does not exist in the given class
+     */
+    public static Class<?> getFieldType(Class<?> modelClass, String fieldName)
+            throws NoSuchFieldException {
+
         Field field = modelClass.getDeclaredField(fieldName);
         field.setAccessible(true);
 
